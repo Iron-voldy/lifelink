@@ -1,0 +1,21 @@
+name: Container Stack CI
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths: ['backend/**', 'agentic-ai/**', 'web/**', 'docker-compose.yml', '.github/workflows/containers-ci.yml']
+  pull_request:
+    branches: [main, master]
+    paths: ['backend/**', 'agentic-ai/**', 'web/**', 'docker-compose.yml', '.github/workflows/containers-ci.yml']
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The compose file refuses to start without secrets; the example values are enough to validate and build.
+      - run: cp .env.example .env
+      - run: docker compose config --quiet
+      - run: docker compose build

@@ -1,0 +1,59 @@
+# .NET
+bin/
+obj/
+*.user
+appsettings.Development.json
+appsettings.Local.json
+
+# Node / React
+node_modules/
+web/dist/
+web/build/
+web/*.tsbuildinfo
+.env
+.env.local
+
+# Flutter / Dart
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/build/
+mobile/*.iml
+mobile/android/local.properties
+*.apk
+
+# Python / Agentic AI
+__pycache__/
+*.py[cod]
+*.egg-info/
+agentic-ai/.venv/
+agentic-ai/venv/
+
+# Secrets — never commit
+*.pem
+*.key
+secrets.json
+.env*
+!.env.example
+!.env.*.example
+
+# IDE / OS
+.tools/
+.vs/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+# Generated integration-test evidence (contains IDs and timestamps, never secrets)
+artifacts/e2e/
+# Browser review artifacts
+web/test-results/
+web/playwright-report/
+web/debug.png
+
+# Unrelated nested repository (not part of LifeLink)
+nirmana/
+
+# Local caches
+.pytest_cache/
+.ruff_cache/

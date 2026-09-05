@@ -1,0 +1,32 @@
+name: React CI
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths: [ 'web/**', '.github/workflows/react-ci.yml' ]
+  pull_request:
+    branches: [ main, master ]
+    paths: [ 'web/**', '.github/workflows/react-ci.yml' ]
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lifelink-web-dist
+          path: web/dist

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lifelink.local/schemas/workflow-request-v1.schema.json",
+  "title": "LifeLink Agent Workflow Request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["workflow_id", "request_id", "blood_type", "quantity_units", "urgency", "donors", "stock"],
+  "properties": {
+    "workflow_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "correlation_id": { "type": ["string", "null"], "maxLength": 100 },
+    "blood_type": { "enum": ["APositive", "ANegative", "BPositive", "BNegative", "ABPositive", "ABNegative", "OPositive", "ONegative"] },
+    "quantity_units": { "type": "integer", "minimum": 1, "maximum": 100 },
+    "urgency": { "enum": ["Routine", "Urgent", "Critical"] },
+    "notes": { "type": ["string", "null"], "maxLength": 2000 },
+    "donors": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["user_id", "blood_type"],
+        "properties": {
+          "user_id": { "type": "string", "minLength": 1 },
+          "blood_type": { "type": "string" },
+          "distance_km": { "type": ["number", "null"], "minimum": 0 }
+        }
+      }
+    },
+    "stock": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["lot_id", "blood_type", "units_available", "expiry_date"],
+        "properties": {
+          "lot_id": { "type": "string", "minLength": 1 },
+          "blood_type": { "type": "string" },
+          "units_available": { "type": "integer", "minimum": 0 },
+          "expiry_date": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}
