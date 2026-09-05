@@ -1,0 +1,78 @@
+name: lifelink
+services:
+  postgres:
+    image: postgres:16-alpine
+    # Loopback only: the stack reaches it over the compose network; never expose the database on the LAN.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lifelink}
+      POSTGRES_USER: ${POSTGRES_USER:-lifelink}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["lifelink-postgres:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  agent:
+    build: ./agentic-ai
+    environment:
+      LIFELINK_INTERNAL_API_KEY: ${AGENT_INTERNAL_API_KEY:?Set AGENT_INTERNAL_API_KEY in .env}
+      LIFELINK_MODEL_PROVIDER: ${MODEL_PROVIDER:-deterministic}
+      LIFELINK_MODEL_NAME: ${MODEL_NAME:-llama3.1:8b}
+      LIFELINK_OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434/api/generate}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  api:
+    build: ./backend
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__LifeLink: Host=postgres;Port=5432;Database=${POSTGRES_DB:-lifelink};Username=${POSTGRES_USER:-lifelink};Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      Jwt__Issuer: LifeLink
+      Jwt__Audience: LifeLink.Clients
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env}
+      Jwt__AccessTokenMinutes: 15
+      Jwt__RefreshTokenDays: 14
+      AgentService__BaseUrl: http://agent:8000
+      AgentService__InternalApiKey: ${AGENT_INTERNAL_API_KEY:?Set AGENT_INTERNAL_API_KEY in .env}
+      AgentService__TimeoutSeconds: 20
+      Cors__AllowedOrigins__0: http://localhost:8080
+      Database__MigrateOnStartup: "true"
+      Bootstrap__Enabled: ${BOOTSTRAP_ENABLED:-true}
+      Bootstrap__AdminEmail: ${BOOTSTRAP_ADMIN_EMAIL:-admin@lifelink.local}
+      Bootstrap__AdminPassword: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
+      Firebase__Enabled: ${FIREBASE_ENABLED:-false}
+      Firebase__ProjectId: ${FIREBASE_PROJECT_ID:-}
+      Firebase__ServiceAccountJsonBase64: ${FIREBASE_SERVICE_ACCOUNT_JSON_BASE64:-}
+    ports: ["5080:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      agent: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_BASE_URL: /
+    ports: ["8080:8080"]
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  lifelink-postgres:
