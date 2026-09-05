@@ -1,0 +1,68 @@
+name: Cross-platform integration
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - "agentic-ai/**"
+      - "web/**"
+      - "mobile/**"
+      - "integration-tests/**"
+      - "docker-compose.yml"
+      - ".github/workflows/integration.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "backend/**"
+      - "agentic-ai/**"
+      - "web/**"
+      - "mobile/**"
+      - "integration-tests/**"
+      - "docker-compose.yml"
+      - ".github/workflows/integration.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  full-workflow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure isolated test environment
+        shell: pwsh
+        # The API and agent refuse placeholder secrets outside Development, so the run needs fresh random values.
+        run: |
+          function New-Secret([int]$length) { -join ((1..$length) | ForEach-Object { [char[]]'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789' | Get-Random }) }
+          (Get-Content .env.e2e.example) `
+            -replace '^POSTGRES_PASSWORD=.*', "POSTGRES_PASSWORD=$(New-Secret 32)" `
+            -replace '^JWT_SIGNING_KEY=.*', "JWT_SIGNING_KEY=$(New-Secret 64)" `
+            -replace '^AGENT_INTERNAL_API_KEY=.*', "AGENT_INTERNAL_API_KEY=$(New-Secret 40)" |
+            Set-Content .env.e2e
+
+      - name: Run Flutter-to-agent-to-React workflow
+        shell: pwsh
+        run: ./integration-tests/run.ps1 -KeepRunning
+
+      - name: Capture container logs
+        if: always()
+        run: docker compose --project-name lifelink-e2e --env-file .env.e2e logs --no-color > integration-tests/compose.log
+
+      - name: Stop integration environment
+        if: always()
+        run: docker compose --project-name lifelink-e2e --env-file .env.e2e down
+
+      - name: Upload audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-platform-audit-evidence
+          path: |
+            artifacts/e2e/*.json
+            integration-tests/compose.log
+          if-no-files-found: warn
+          retention-days: 30

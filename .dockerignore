@@ -1,0 +1,9 @@
+.git
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+mobile
+docs

@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifeLink.Api", "LifeLink.Api\LifeLink.Api.csproj", "{5FDD94AA-7A04-474E-AF2C-9918B2F3456F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifeLink.Application", "LifeLink.Application\LifeLink.Application.csproj", "{223AD58E-0B08-4CA8-90BF-51D9741EC519}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifeLink.Domain", "LifeLink.Domain\LifeLink.Domain.csproj", "{96A8F233-FB16-4F96-9A0A-231CF211F3A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifeLink.Infrastructure", "LifeLink.Infrastructure\LifeLink.Infrastructure.csproj", "{C6C8B685-0AE4-4BAA-B7C3-7E3F6EABA072}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LifeLink.Tests", "LifeLink.Tests\LifeLink.Tests.csproj", "{F14D5986-49FC-4CC0-9695-026D1BD0840C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5FDD94AA-7A04-474E-AF2C-9918B2F3456F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FDD94AA-7A04-474E-AF2C-9918B2F3456F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FDD94AA-7A04-474E-AF2C-9918B2F3456F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FDD94AA-7A04-474E-AF2C-9918B2F3456F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{223AD58E-0B08-4CA8-90BF-51D9741EC519}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{223AD58E-0B08-4CA8-90BF-51D9741EC519}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{223AD58E-0B08-4CA8-90BF-51D9741EC519}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{223AD58E-0B08-4CA8-90BF-51D9741EC519}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96A8F233-FB16-4F96-9A0A-231CF211F3A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96A8F233-FB16-4F96-9A0A-231CF211F3A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96A8F233-FB16-4F96-9A0A-231CF211F3A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96A8F233-FB16-4F96-9A0A-231CF211F3A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C6C8B685-0AE4-4BAA-B7C3-7E3F6EABA072}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C6C8B685-0AE4-4BAA-B7C3-7E3F6EABA072}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C6C8B685-0AE4-4BAA-B7C3-7E3F6EABA072}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C6C8B685-0AE4-4BAA-B7C3-7E3F6EABA072}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F14D5986-49FC-4CC0-9695-026D1BD0840C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F14D5986-49FC-4CC0-9695-026D1BD0840C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F14D5986-49FC-4CC0-9695-026D1BD0840C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F14D5986-49FC-4CC0-9695-026D1BD0840C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

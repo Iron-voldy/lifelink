@@ -1,0 +1,40 @@
+name: Backend CI
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: [ "5432:5432" ]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet restore backend/LifeLink.sln
+      - run: dotnet tool restore
+        working-directory: backend
+      - run: dotnet build backend/LifeLink.sln --no-restore
+      - run: dotnet test backend/LifeLink.sln --no-build --verbosity normal
+      - run: dotnet ef migrations script --project LifeLink.Infrastructure --startup-project LifeLink.Api --idempotent --output migration.sql
+        working-directory: backend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: database-migration-script
+          path: backend/migration.sql

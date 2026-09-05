@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lifelink.local/schemas/workflow-response-v1.schema.json",
+  "title": "LifeLink Agent Workflow Response v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "workflow_id", "plan", "steps", "outcome", "requires_approval", "validation", "proposed_reservation_units", "proposed_recipient_user_ids"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "workflow_id": { "type": "string", "minLength": 1 },
+    "plan": { "type": "object" },
+    "steps": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sequence", "agent_name", "input", "output", "tool_calls", "status"],
+        "properties": {
+          "sequence": { "type": "integer", "minimum": 1, "maximum": 4 },
+          "agent_name": { "type": "string", "minLength": 1 },
+          "input": { "type": "object" },
+          "output": { "type": "object" },
+          "tool_calls": { "type": "array", "items": { "type": "object" } },
+          "status": { "enum": ["Completed", "Failed"] },
+          "error_code": { "type": ["string", "null"] },
+          "error_message": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "outcome": { "enum": ["PendingApproval", "EscalationRequired", "Completed"] },
+    "requires_approval": { "type": "boolean" },
+    "validation": { "type": "object" },
+    "proposed_reservation_units": { "type": "integer", "minimum": 0 },
+    "proposed_recipient_user_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+  }
+}
