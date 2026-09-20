@@ -4,6 +4,7 @@ using LifeLink.Infrastructure.Authentication;
 using LifeLink.Application.Donors;
 using LifeLink.Infrastructure.Donors;
 using LifeLink.Application.Requests;
+using LifeLink.Infrastructure.Requests;
 using LifeLink.Application.Inventory;
 using LifeLink.Infrastructure.Inventory;
 using LifeLink.Application.Camps;
@@ -31,6 +32,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IDonorService, DonorService>();
+        services.AddScoped<IRequestService, RequestService>();
         services.AddScoped<IInventoryService, InventoryService>();
         services.AddOptions<FirebaseOptions>().Bind(configuration.GetSection(FirebaseOptions.SectionName));
         services.AddHttpClient<FirebaseNotificationProvider>(client => client.Timeout = TimeSpan.FromSeconds(10));
