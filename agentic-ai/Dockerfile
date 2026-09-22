@@ -3,6 +3,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY lifelink_agents ./lifelink_agents
+COPY coordinator_agent ./coordinator_agent
 COPY domain_analysis_agent ./domain_analysis_agent
 COPY dispatch_agent ./dispatch_agent
 COPY validation_agent ./validation_agent
