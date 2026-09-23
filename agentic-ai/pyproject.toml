@@ -17,4 +17,4 @@ line-length = 100
 target-version = "py311"
 
 [tool.setuptools.packages.find]
-include = ["lifelink_agents*", "domain_analysis_agent*", "dispatch_agent*", "validation_agent*", "tools*"]
+include = ["lifelink_agents*", "coordinator_agent*", "domain_analysis_agent*", "dispatch_agent*", "validation_agent*", "tools*"]
