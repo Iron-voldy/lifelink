@@ -36,6 +36,7 @@ def test_golden_workflow_scenario(scenario: dict, monkeypatch: pytest.MonkeyPatc
     assert result.proposed_reservation_units == expected["reserve_units"]
     assert result.proposed_recipient_user_ids == expected["recipient_user_ids"]
     assert [step.agent_name for step in result.steps] == [
+        "CoordinatorAgent",
         "DomainAnalysisAgent",
         "DispatchAgent",
         "ValidationSafetyAgent",
@@ -44,6 +45,6 @@ def test_golden_workflow_scenario(scenario: dict, monkeypatch: pytest.MonkeyPatc
     assert result.validation["no_arbitrary_tools"] is True
     if "prompt_injection_ignored" in expected:
         assert result.validation["prompt_injection_ignored"] is expected["prompt_injection_ignored"]
-        assert result.steps[0].output["notes_classification"] == "untrusted-data"
+        assert result.steps[1].output["notes_classification"] == "untrusted-data"
     if "rare_or_critical" in expected:
         assert result.validation["rare_or_critical"] is expected["rare_or_critical"]
