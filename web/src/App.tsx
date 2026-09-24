@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { DonorsPage } from './pages/DonorsPage'
+import { RequestsPage } from './pages/RequestsPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { CampsPage } from './pages/CampsPage'
 import { WorkflowsPage } from './pages/WorkflowsPage'
@@ -20,6 +21,7 @@ export function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="donors" element={<DonorsPage />} />
+        <Route path="requests" element={<RequestsPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="camps" element={<CampsPage />} />
         <Route path="workflows" element={<WorkflowsPage />} />
