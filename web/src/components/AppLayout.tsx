@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../features/auth/AuthContext'
 import { Icon, type IconName } from './Icon'
 import { ThemeToggle } from './ThemeToggle'
-const nav: [string, string, IconName][] = [['/dashboard', 'Overview', 'overview'], ['/donors', 'Donors', 'donors'], ['/requests', 'Requests', 'requests'], ['/inventory', 'Inventory', 'inventory'], ['/camps', 'Donation camps', 'calendar'], ['/workflows', 'AI Workflows', 'workflow']]
+const nav: [string, string, IconName][] = [['/dashboard', 'Overview', 'overview'], ['/donors', 'Donors', 'donors'], ['/hospitals', 'Hospitals', 'hospital'], ['/requests', 'Requests', 'requests'], ['/inventory', 'Inventory', 'inventory'], ['/camps', 'Donation camps', 'calendar'], ['/workflows', 'AI Workflows', 'workflow']]
 export function AppLayout() {
  const { user, logout } = useAuth(); const navigate = useNavigate(); const location = useLocation()
  const [menuOpen, setMenuOpen] = useState(false)
