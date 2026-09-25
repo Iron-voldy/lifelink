@@ -9,6 +9,7 @@ import { RequestsPage } from './pages/RequestsPage'
 import { InventoryPage } from './pages/InventoryPage'
 import { CampsPage } from './pages/CampsPage'
 import { WorkflowsPage } from './pages/WorkflowsPage'
+import { HospitalsPage } from './pages/HospitalsPage'
 import { DonorPortalPage } from './pages/DonorPortalPage'
 import { WelcomePage } from './pages/WelcomePage'
 
@@ -21,6 +22,7 @@ export function App() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="donors" element={<DonorsPage />} />
+        <Route path="hospitals" element={<HospitalsPage />} />
         <Route path="requests" element={<RequestsPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="camps" element={<CampsPage />} />
