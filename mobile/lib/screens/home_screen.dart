@@ -8,6 +8,7 @@ import '../services/lifelink_service.dart';
 import '../services/push_notification_service.dart';
 import 'camps/camps_screen.dart';
 import 'donor/profile_screen.dart';
+import 'hospital/requests_screen.dart';
 import 'hospital/hospital_registration_screen.dart';
 import 'notifications_screen.dart';
 
@@ -120,6 +121,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 else
                   HospitalStatusCard(
                       hospital: hospitalProfile, error: hospitalError),
+                if (!hospitalLoading &&
+                    (hospitalProfile != null || hospitalError != null))
+                  _Action(
+                      icon: Icons.emergency,
+                      title: 'Blood requests',
+                      subtitle: 'Create and track an urgent request',
+                      onTap: () => open(const RequestsScreen()))
               ] else ...[
                 _Action(
                     icon: Icons.health_and_safety,
