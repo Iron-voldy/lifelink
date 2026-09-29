@@ -8,6 +8,8 @@ import '../services/lifelink_service.dart';
 import '../services/push_notification_service.dart';
 import 'camps/camps_screen.dart';
 import 'donor/profile_screen.dart';
+import 'hospital/requests_screen.dart';
+import 'hospital/hospital_registration_screen.dart';
 import 'notifications_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -102,9 +104,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: ListTile(
                           leading: Icon(Icons.hourglass_empty),
                           title: Text('Checking your hospital status...')))
+                else if (hospitalProfile == null && hospitalError == null)
+                  _Action(
+                      icon: Icons.business,
+                      title: 'Register hospital',
+                      subtitle:
+                          'Required before this account can submit blood requests',
+                      onTap: () async {
+                        await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const HospitalRegistrationScreen()));
+                        if (mounted) await _loadHospital();
+                      })
                 else
                   HospitalStatusCard(
                       hospital: hospitalProfile, error: hospitalError),
+                if (!hospitalLoading &&
+                    (hospitalProfile != null || hospitalError != null))
+                  _Action(
+                      icon: Icons.emergency,
+                      title: 'Blood requests',
+                      subtitle: 'Create and track an urgent request',
+                      onTap: () => open(const RequestsScreen()))
               ] else ...[
                 _Action(
                     icon: Icons.health_and_safety,

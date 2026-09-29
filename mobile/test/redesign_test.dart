@@ -15,6 +15,9 @@ import 'package:lifelink_mobile/screens/home_screen.dart';
 import 'package:lifelink_mobile/screens/donor/profile_screen.dart';
 import 'package:lifelink_mobile/screens/camps/camps_screen.dart';
 import 'package:lifelink_mobile/screens/camps/camp_detail_screen.dart';
+import 'package:lifelink_mobile/screens/hospital/requests_screen.dart';
+import 'package:lifelink_mobile/screens/hospital/request_detail_screen.dart';
+import 'package:lifelink_mobile/screens/hospital/hospital_registration_screen.dart';
 import 'package:lifelink_mobile/screens/notifications_screen.dart';
 import 'package:lifelink_mobile/services/api_client.dart';
 import 'package:lifelink_mobile/services/auth_controller.dart';
@@ -130,6 +133,9 @@ void main() {
     'profile': const DonorProfileScreen(),
     'camps': const CampsScreen(),
     'camp-detail': const CampDetailScreen(camp: _camp),
+    'requests': const RequestsScreen(),
+    'request-detail': const RequestDetailScreen(request: _request),
+    'hospital-registration': const HospitalRegistrationScreen(),
     'notifications': const NotificationsScreen()
   };
   for (final width in [320.0, 390.0, 820.0]) {
