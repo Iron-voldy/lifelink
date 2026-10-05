@@ -72,5 +72,6 @@ GitHub Actions also builds the container stack and produces downloadable web, mi
 - [Reviewed ER model](docs/er-diagram.md)
 - [Architecture decisions](docs/adr/README.md)
 - [Full project interpretation](LifeLink-Project-Documentation.md)
+- [Industry readiness research](docs/industry-readiness-research.md)
 
 The assignment PDF remains the authoritative source for grading and submission mechanics. Synthetic data must be used for development and demonstrations.
