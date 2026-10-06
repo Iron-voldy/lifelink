@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
   return {
     donor, camp, workflow,
     inventoryList,
+    updateLocation: vi.fn(async (id: string, input: { name: string; address: string; latitude: number; longitude: number }) => ({ id, ...input })),
     recordDonation: vi.fn(async (_id: string, input: { donationDate: string; units: number }) => ({ id: 'd1', donationDate: input.donationDate, units: input.units, location: 'Centre' })),
     checkIn: vi.fn(async () => ({})),
     decide: vi.fn(async (): Promise<unknown> => ({ ...workflow, id: 'wf-2', attemptNumber: 2, objective: 'Revised attempt' })),
@@ -23,7 +24,7 @@ vi.mock('../api/client', () => ({
     donors: { list: vi.fn(async () => ({ items: [mocks.donor], page: 1, pageSize: 25, totalCount: 1, totalPages: 1 })), evaluate: vi.fn(), deactivate: vi.fn(), recordDonation: mocks.recordDonation },
     camps: { list: vi.fn(async () => ({ items: [mocks.camp], page: 1, pageSize: 100, totalCount: 1, totalPages: 1 })), transition: vi.fn(), create: vi.fn(), roster: vi.fn(async () => [{ slotId: 's1', slotTimeUtc: '2026-10-04T03:00:00Z', status: 'Booked', donorId: 'donor-1', donorEmail: 'kamal@example.com', bloodType: 'OPositive' }]), attendance: vi.fn(async () => ({ campId: 'camp-1', capacity: 3, booked: 1, checkedIn: 0, noShows: 0, cancelled: 0, attendanceRate: 0 })), checkIn: mocks.checkIn },
     workflows: { list: mocks.workflowList, get: vi.fn(async (id: string) => id === 'wf-2' ? { ...mocks.workflow, id: 'wf-2', attemptNumber: 2, objective: 'Revised attempt' } : mocks.workflow), decide: mocks.decide },
-    inventory: { list: mocks.inventoryList, locations: vi.fn(async () => [{ id: 'loc', name: 'Central', address: 'Colombo', latitude: 6.9, longitude: 79.8 }]), expiring: vi.fn(async () => []), report: vi.fn(async () => [{ locationId: 'loc', locationName: 'Central', bloodType: 'APositive', availableUnits: 12, lotCount: 2, expiringWithinSevenDays: 0 }]) },
+    inventory: { list: mocks.inventoryList, locations: vi.fn(async () => [{ id: 'loc', name: 'Central', address: 'Colombo', latitude: 6.9, longitude: 79.8 }]), updateLocation: mocks.updateLocation, expiring: vi.fn(async () => []), report: vi.fn(async () => [{ locationId: 'loc', locationName: 'Central', bloodType: 'APositive', availableUnits: 12, lotCount: 2, expiringWithinSevenDays: 0 }]) },
   },
 }))
 
@@ -114,5 +115,30 @@ describe('inventory totals', () => {
       page: 1,
       pageSize: 100,
     })))
+  })
+
+  it('edits a location and submits its updated details', async () => {
+    wrap(<InventoryPage />)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const form = screen.getByRole('form', { name: 'Edit location' })
+    await user.clear(within(form).getByLabelText('Name'))
+    await user.type(within(form).getByLabelText('Name'), 'North Central')
+    await user.clear(within(form).getByLabelText('Address'))
+    await user.type(within(form).getByLabelText('Address'), 'New address')
+    await user.clear(within(form).getByLabelText('Latitude'))
+    await user.type(within(form).getByLabelText('Latitude'), '7.1')
+    await user.clear(within(form).getByLabelText('Longitude'))
+    await user.type(within(form).getByLabelText('Longitude'), '80.2')
+    await user.click(within(form).getByRole('button', { name: 'Save location' }))
+
+    await waitFor(() => expect(mocks.updateLocation).toHaveBeenCalledWith('loc', {
+      name: 'North Central',
+      address: 'New address',
+      latitude: 7.1,
+      longitude: 80.2,
+    }))
+    expect(await screen.findByRole('status')).toHaveTextContent('Location North Central updated.')
   })
 })
