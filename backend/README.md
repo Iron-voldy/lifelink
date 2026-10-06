@@ -16,3 +16,16 @@
 ## Rule
 React and Flutter only ever call this API — never the Agentic AI service or third-party
 services directly (spec §2 "Mandatory backend rule").
+
+## PostgreSQL inventory concurrency tests
+
+`PostgresInventoryConcurrencyTests` exercises competing reservations and dispatches against a
+real PostgreSQL database. It is skipped unless `LIFELINK_TEST_POSTGRES` is set. Use a
+dedicated disposable test database: the tests apply EF Core migrations and insert uniquely
+named test records.
+
+```powershell
+$env:LIFELINK_TEST_POSTGRES = "Host=localhost;Port=5432;Database=lifelink_test;Username=postgres;Password=<test-password>"
+dotnet test LifeLink.Tests\LifeLink.Tests.csproj --filter FullyQualifiedName~PostgresInventoryConcurrencyTests
+Remove-Item Env:\LIFELINK_TEST_POSTGRES
+```
