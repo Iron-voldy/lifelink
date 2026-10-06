@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
@@ -8,8 +8,10 @@ const mocks = vi.hoisted(() => {
   const donor = { id: 'donor-1', userId: 'u1', email: 'kamal@example.com', bloodType: 'OPositive', dateOfBirth: '1990-01-01', eligibilityStatus: 'Eligible', address: 'Colombo', medicalFlags: [], isActive: true, updatedAtUtc: '2026-10-01T00:00:00Z' }
   const camp = { id: 'camp-1', name: 'qa camp', location: 'Hall', startsAtUtc: '2026-10-04T03:00:00Z', endsAtUtc: '2026-10-04T06:00:00Z', capacity: 3, status: 'InProgress', availableSlots: 2, bookedSlots: 1 }
   const workflow = { id: 'wf-1', bloodRequestId: 'r1', attemptNumber: 1, objective: 'Fulfil request', planJson: '{}', status: 'PendingApproval', correlationId: 'c1', steps: [], approvals: [] }
+  const inventoryList = vi.fn(async () => ({ items: [{ id: 'l1', locationId: 'loc', locationName: 'Central', bloodType: 'APositive', unitsReceived: 5, unitsAvailable: 5, expiryDate: '2026-11-01', source: 'x', status: 'Available', version: 1, updatedAtUtc: '2026-10-01T00:00:00Z' }], page: 1, pageSize: 100, totalCount: 2, totalPages: 1 }))
   return {
     donor, camp, workflow,
+    inventoryList,
     recordDonation: vi.fn(async (_id: string, input: { donationDate: string; units: number }) => ({ id: 'd1', donationDate: input.donationDate, units: input.units, location: 'Centre' })),
     checkIn: vi.fn(async () => ({})),
     decide: vi.fn(async (): Promise<unknown> => ({ ...workflow, id: 'wf-2', attemptNumber: 2, objective: 'Revised attempt' })),
@@ -21,7 +23,7 @@ vi.mock('../api/client', () => ({
     donors: { list: vi.fn(async () => ({ items: [mocks.donor], page: 1, pageSize: 25, totalCount: 1, totalPages: 1 })), evaluate: vi.fn(), deactivate: vi.fn(), recordDonation: mocks.recordDonation },
     camps: { list: vi.fn(async () => ({ items: [mocks.camp], page: 1, pageSize: 100, totalCount: 1, totalPages: 1 })), transition: vi.fn(), create: vi.fn(), roster: vi.fn(async () => [{ slotId: 's1', slotTimeUtc: '2026-10-04T03:00:00Z', status: 'Booked', donorId: 'donor-1', donorEmail: 'kamal@example.com', bloodType: 'OPositive' }]), attendance: vi.fn(async () => ({ campId: 'camp-1', capacity: 3, booked: 1, checkedIn: 0, noShows: 0, cancelled: 0, attendanceRate: 0 })), checkIn: mocks.checkIn },
     workflows: { list: mocks.workflowList, get: vi.fn(async (id: string) => id === 'wf-2' ? { ...mocks.workflow, id: 'wf-2', attemptNumber: 2, objective: 'Revised attempt' } : mocks.workflow), decide: mocks.decide },
-    inventory: { list: vi.fn(async () => ({ items: [{ id: 'l1', locationId: 'loc', locationName: 'Central', bloodType: 'APositive', unitsReceived: 5, unitsAvailable: 5, expiryDate: '2026-11-01', source: 'x', status: 'Available', version: 1, updatedAtUtc: '2026-10-01T00:00:00Z' }], page: 1, pageSize: 100, totalCount: 2, totalPages: 1 })), locations: vi.fn(async () => []), expiring: vi.fn(async () => []), report: vi.fn(async () => [{ locationId: 'loc', locationName: 'Central', bloodType: 'APositive', availableUnits: 12, lotCount: 2, expiringWithinSevenDays: 0 }]) },
+    inventory: { list: mocks.inventoryList, locations: vi.fn(async () => [{ id: 'loc', name: 'Central', address: 'Colombo', latitude: 6.9, longitude: 79.8 }]), expiring: vi.fn(async () => []), report: vi.fn(async () => [{ locationId: 'loc', locationName: 'Central', bloodType: 'APositive', availableUnits: 12, lotCount: 2, expiringWithinSevenDays: 0 }]) },
   },
 }))
 
@@ -89,5 +91,28 @@ describe('inventory totals', () => {
     wrap(<InventoryPage />)
     const summary = await screen.findByLabelText('Available units by blood type')
     expect(await within(summary).findByText('12')).toBeInTheDocument()
+  })
+
+  it('sends location, blood type, status and sort controls to the inventory query', async () => {
+    wrap(<InventoryPage />)
+    const user = userEvent.setup()
+    await screen.findByLabelText('Available units by blood type')
+
+    await user.selectOptions(screen.getByLabelText('Filter by location'), 'loc')
+    await user.selectOptions(screen.getByLabelText('Filter by blood type'), 'ONegative')
+    await user.selectOptions(screen.getByLabelText('Filter by status'), 'Expired')
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'units')
+    await user.selectOptions(screen.getByLabelText('Sort order'), 'true')
+
+    await waitFor(() => expect(mocks.inventoryList).toHaveBeenLastCalledWith(expect.objectContaining({
+      locationId: 'loc',
+      bloodType: 'ONegative',
+      status: 'Expired',
+      includeExpired: true,
+      sortBy: 'units',
+      descending: true,
+      page: 1,
+      pageSize: 100,
+    })))
   })
 })
