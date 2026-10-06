@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { BloodType, InventoryLot, InventoryLotStatus } from '../api/types'
+import type { BloodType, InventoryLot, InventoryLotStatus, Location } from '../api/types'
 import { QueryState, StatusPill, formatDate } from '../components/QueryState'
 
 const bloodTypes: BloodType[] = ['APositive', 'ANegative', 'BPositive', 'BNegative', 'ABPositive', 'ABNegative', 'OPositive', 'ONegative']
@@ -19,6 +19,7 @@ export function InventoryPage() {
   const client = useQueryClient()
   const [showStock, setShowStock] = useState(false)
   const [showLocation, setShowLocation] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<Location>()
   const [notice, setNotice] = useState('')
   const [highlight, setHighlight] = useState<string>()
   const [editing, setEditing] = useState<string>()
@@ -30,15 +31,17 @@ export function InventoryPage() {
   const done = (message: string, lot?: InventoryLot) => { setNotice(message); setHighlight(lot?.id); setEditing(undefined); return refreshStock(client) }
   const stockIn = useMutation({ mutationFn: api.inventory.stockIn, onSuccess: lot => { setShowStock(false); done(`Received ${lot.unitsReceived} unit(s) of ${label(lot.bloodType)} at ${lot.locationName}, expiring ${formatDate(lot.expiryDate)}.`, lot) } })
   const createLocation = useMutation({ mutationFn: api.inventory.createLocation, onSuccess: location => { setShowLocation(false); done(`Location ${location.name} added. You can now receive stock there.`) } })
+  const updateLocation = useMutation({ mutationFn: ({ id, input }: { id: string; input: Omit<Location, 'id'> }) => api.inventory.updateLocation(id, input), onSuccess: location => { setEditingLocation(undefined); done(`Location ${location.name} updated.`) } })
   const adjust = useMutation({ mutationFn: ({ lot, units }: { lot: InventoryLot; units: number }) => api.inventory.adjust(lot.id, units, lot.version), onSuccess: lot => done(`${label(lot.bloodType)} lot at ${lot.locationName} now has ${lot.unitsAvailable} unit(s) available.`, lot), onError: () => refreshStock(client) })
   const quarantine = useMutation({ mutationFn: api.inventory.quarantine, onSuccess: lot => done(`${label(lot.bloodType)} lot at ${lot.locationName} was quarantined and removed from available stock.`, lot) })
-  const actionError = stockIn.error || createLocation.error || adjust.error || quarantine.error || locations.error
+  const actionError = stockIn.error || createLocation.error || updateLocation.error || adjust.error || quarantine.error || locations.error
 
   // Bring the lot that just changed into view; FEFO ordering can place it far down the table.
   useEffect(() => { if (highlight) document.getElementById(`lot-${highlight}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }) }, [highlight, lots.data])
 
   function submitStock(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setNotice(''); const data = new FormData(event.currentTarget); stockIn.mutate({ locationId: String(data.get('locationId')), bloodType: String(data.get('bloodType')) as BloodType, units: Number(data.get('units')), expiryDate: String(data.get('expiryDate')), source: String(data.get('source')).trim() }) }
   function submitLocation(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setNotice(''); const data = new FormData(event.currentTarget); createLocation.mutate({ name: String(data.get('name')).trim(), address: String(data.get('address')).trim(), latitude: Number(data.get('latitude')), longitude: Number(data.get('longitude')) }) }
+  function submitLocationUpdate(event: FormEvent<HTMLFormElement>, location: Location) { event.preventDefault(); setNotice(''); const data = new FormData(event.currentTarget); updateLocation.mutate({ id: location.id, input: { name: String(data.get('name')).trim(), address: String(data.get('address')).trim(), latitude: Number(data.get('latitude')), longitude: Number(data.get('longitude')) } }) }
   function submitAdjust(event: FormEvent<HTMLFormElement>, lot: InventoryLot) { event.preventDefault(); setNotice(''); adjust.mutate({ lot, units: Number(new FormData(event.currentTarget).get('units')) }) }
   function updateFilter<K extends keyof InventoryFilters>(key: K, value: InventoryFilters[K]) { setFilters(current => ({ ...current, [key]: value, page: 1 })) }
   function clearFilters() { setFilters(current => ({ includeExpired: false, sortBy: 'expiry', descending: false, page: 1, pageSize: current.pageSize })) }
@@ -50,6 +53,23 @@ export function InventoryPage() {
   return <>
     <header className="page-header"><div><p className="eyebrow">Supply network</p><h1>Blood inventory</h1><p>Lot-level availability, expiry pressure and dispatch readiness.</p></div><div className="header-actions"><button className="secondary-button" onClick={() => setShowLocation(v => !v)}>Add location</button><button className="primary-button" onClick={() => setShowStock(v => !v)}>Stock in</button></div></header>
     {showLocation && <form className="panel form-panel" onSubmit={submitLocation}><h2>New storage location</h2><div className="form-grid"><label>Name<input name="name" required /></label><label>Address<input name="address" required /></label><label>Latitude<input name="latitude" type="number" step="any" min="-90" max="90" required /></label><label>Longitude<input name="longitude" type="number" step="any" min="-180" max="180" required /></label></div><button className="primary-button" disabled={createLocation.isPending}>Create location</button></form>}
+    <section className="panel form-panel" aria-labelledby="inventory-locations-title">
+      <h2 id="inventory-locations-title">Blood-bank locations</h2>
+      {locations.data?.length ? <div className="location-list">{locations.data.map(location => <div className="location-row" key={location.id}>
+        <div><strong>{location.name}</strong><small>{location.address} · {location.latitude}, {location.longitude}</small></div>
+        <button className="text-button" type="button" onClick={() => { setEditingLocation(location); setNotice('') }}>Edit</button>
+      </div>)}</div> : <p>No locations have been registered yet.</p>}
+    </section>
+    {editingLocation && <form className="panel form-panel" aria-label="Edit location" onSubmit={event => submitLocationUpdate(event, editingLocation)}>
+      <h2>Edit {editingLocation.name}</h2>
+      <div className="form-grid">
+        <label>Name<input name="name" defaultValue={editingLocation.name} required maxLength={250} /></label>
+        <label>Address<input name="address" defaultValue={editingLocation.address} required maxLength={500} /></label>
+        <label>Latitude<input name="latitude" type="number" step="any" min="-90" max="90" defaultValue={editingLocation.latitude} required /></label>
+        <label>Longitude<input name="longitude" type="number" step="any" min="-180" max="180" defaultValue={editingLocation.longitude} required /></label>
+      </div>
+      <div className="action-row"><button className="primary-button" disabled={updateLocation.isPending}>{updateLocation.isPending ? 'Saving…' : 'Save location'}</button><button className="secondary-button" type="button" onClick={() => setEditingLocation(undefined)}>Cancel</button></div>
+    </form>}
     {showStock && <form className="panel form-panel" onSubmit={submitStock}><h2>Receive blood stock</h2><div className="form-grid"><label>Location<select name="locationId" required><option value="">Select location</option>{locations.data?.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>Blood type<select name="bloodType">{bloodTypes.map(x => <option key={x} value={x}>{label(x)}</option>)}</select></label><label>Units<input name="units" type="number" min="1" max="10000" required /></label><label>Expiry date<input name="expiryDate" type="date" min={inDays(1)} max={inDays(maxShelfLifeDays)} required /></label><label>Source<input name="source" required maxLength={200} placeholder="e.g. Kandy donation camp" /></label></div><button className="primary-button" disabled={stockIn.isPending}>{stockIn.isPending ? 'Receiving…' : 'Receive stock'}</button></form>}
     {actionError && <div className="form-error" role="alert">{actionError.message}</div>}{notice && <div className="form-notice" role="status">{notice}</div>}
     <section className="toolbar inventory-toolbar" aria-label="Filter inventory lots">
