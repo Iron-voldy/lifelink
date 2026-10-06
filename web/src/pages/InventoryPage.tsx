@@ -89,6 +89,14 @@ export function InventoryPage() {
         <td data-label="Expiry" className={expiring.data?.some(x => x.id === lot.id) ? 'danger-text' : ''}>{formatDate(lot.expiryDate)}</td><td data-label="Source">{lot.source}</td><td data-label="Status"><StatusPill value={lot.status} /></td>
         <td data-label="Actions">{lot.status !== 'Quarantined' && editing !== lot.id && <div className="action-row"><button className="text-button" onClick={() => { setEditing(lot.id); setNotice('') }}>Adjust</button><button className="text-button danger-text" disabled={quarantine.isPending} onClick={() => window.confirm(`Quarantine this ${label(lot.bloodType)} lot? Its units stop counting as available.`) && quarantine.mutate(lot.id)}>Quarantine</button></div>}</td>
       </tr>)}</tbody></table></section>
+      <nav className="inventory-pagination" aria-label="Inventory pages">
+        <span>Page {lots.data?.page ?? filters.page} of {Math.max(1, lots.data?.totalPages ?? 1)} · {lots.data?.totalCount ?? 0} lots</span>
+        <label>Lots per page<select aria-label="Lots per page" value={filters.pageSize} onChange={event => { const pageSize = Number(event.currentTarget.value); setFilters(current => ({ ...current, page: 1, pageSize })) }}><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select></label>
+        <div className="action-row">
+          <button className="secondary-button" type="button" aria-label="Previous inventory page" disabled={filters.page <= 1 || lots.isFetching} onClick={() => setFilters(current => ({ ...current, page: Math.max(1, current.page - 1) }))}>Previous</button>
+          <button className="secondary-button" type="button" aria-label="Next inventory page" disabled={filters.page >= (lots.data?.totalPages ?? 1) || lots.isFetching} onClick={() => setFilters(current => ({ ...current, page: Math.min(lots.data?.totalPages ?? current.page, current.page + 1) }))}>Next</button>
+        </div>
+      </nav>
     </QueryState>
   </>
 }

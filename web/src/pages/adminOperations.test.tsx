@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => {
   const donor = { id: 'donor-1', userId: 'u1', email: 'kamal@example.com', bloodType: 'OPositive', dateOfBirth: '1990-01-01', eligibilityStatus: 'Eligible', address: 'Colombo', medicalFlags: [], isActive: true, updatedAtUtc: '2026-10-01T00:00:00Z' }
   const camp = { id: 'camp-1', name: 'qa camp', location: 'Hall', startsAtUtc: '2026-10-04T03:00:00Z', endsAtUtc: '2026-10-04T06:00:00Z', capacity: 3, status: 'InProgress', availableSlots: 2, bookedSlots: 1 }
   const workflow = { id: 'wf-1', bloodRequestId: 'r1', attemptNumber: 1, objective: 'Fulfil request', planJson: '{}', status: 'PendingApproval', correlationId: 'c1', steps: [], approvals: [] }
-  const inventoryList = vi.fn(async () => ({ items: [{ id: 'l1', locationId: 'loc', locationName: 'Central', bloodType: 'APositive', unitsReceived: 5, unitsAvailable: 5, expiryDate: '2026-11-01', source: 'x', status: 'Available', version: 1, updatedAtUtc: '2026-10-01T00:00:00Z' }], page: 1, pageSize: 100, totalCount: 2, totalPages: 1 }))
+  const inventoryList = vi.fn(async () => ({ items: [{ id: 'l1', locationId: 'loc', locationName: 'Central', bloodType: 'APositive', unitsReceived: 5, unitsAvailable: 5, expiryDate: '2026-11-01', source: 'x', status: 'Available', version: 1, updatedAtUtc: '2026-10-01T00:00:00Z' }], page: 1, pageSize: 100, totalCount: 205, totalPages: 3 }))
   return {
     donor, camp, workflow,
     inventoryList,
@@ -140,5 +140,18 @@ describe('inventory totals', () => {
       longitude: 80.2,
     }))
     expect(await screen.findByRole('status')).toHaveTextContent('Location North Central updated.')
+  })
+
+  it('paginates inventory and resets to the first page when page size changes', async () => {
+    wrap(<InventoryPage />)
+    const user = userEvent.setup()
+    await screen.findByLabelText('Available units by blood type')
+
+    await user.click(screen.getByRole('button', { name: 'Next inventory page' }))
+    await waitFor(() => expect(mocks.inventoryList).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, pageSize: 100 })))
+
+    await user.selectOptions(screen.getByLabelText('Lots per page'), '20')
+    await waitFor(() => expect(mocks.inventoryList).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 20 })))
+    expect(screen.getByText(/Page 1 of 3/)).toBeInTheDocument()
   })
 })
