@@ -122,3 +122,18 @@ docker exec -it lifelink-postgres-1 psql -U lifelink -d lifelink          # SQL 
 docker exec lifelink-postgres-1 pg_dump -U lifelink lifelink > lifelink-backup.sql   # backup
 ```
 To reseed from scratch: `cd /opt/lifelink/deploy/vps && docker compose down && docker volume rm lifelink_lifelink-postgres && bash deploy.sh`
+
+## 7. CI/CD (GitHub Actions)
+CI: `backend-ci`, `agent-ci`, `react-ci`, `flutter-ci`, `containers-ci` and `integration` run on every push and pull request to `main`.
+CD: `.github/workflows/deploy.yml` runs on every push to `main` that touches `backend/`, `agentic-ai/`, `web/` or `deploy/vps/`
+(or manually from the Actions tab). It runs the backend, agent and web tests, and only if all pass it uploads the sources to the VPS,
+runs `deploy/vps/deploy.sh`, and smoke-tests the public URLs (API health, auth on `/api/hospitals/me`, no-cache on the web app).
+
+One-time setup (a dedicated deploy key, so the workflow never holds your personal key):
+```bash
+ssh-keygen -t ed25519 -N "" -C github-deploy -f ~/.ssh/lifelink_deploy
+ssh-copy-id -i ~/.ssh/lifelink_deploy.pub root@72.62.255.113
+gh secret set VPS_SSH_KEY < ~/.ssh/lifelink_deploy
+ssh-keyscan -H 72.62.255.113 | gh secret set VPS_KNOWN_HOSTS
+```
+Until `VPS_SSH_KEY` exists the deploy job only prints a warning and skips the upload.
