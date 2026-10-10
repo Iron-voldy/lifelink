@@ -12,6 +12,7 @@ import { WorkflowsPage } from './pages/WorkflowsPage'
 import { HospitalsPage } from './pages/HospitalsPage'
 import { DonorPortalPage } from './pages/DonorPortalPage'
 import { WelcomePage } from './pages/WelcomePage'
+import { HospitalPortalPage } from './pages/HospitalPortalPage'
 
 export function App() {
   return <Routes>
@@ -30,7 +31,8 @@ export function App() {
       </Route>
     </Route>
     <Route element={<ProtectedRoute roles={['Donor']} />}><Route path="donor" element={<DonorPortalPage />} /></Route>
-    <Route element={<ProtectedRoute roles={['HospitalRequester', 'CampCoordinator']} />}><Route path="welcome" element={<WelcomePage />} /></Route>
+    <Route element={<ProtectedRoute roles={['HospitalRequester']} />}><Route path="hospital" element={<HospitalPortalPage />} /></Route>
+    <Route element={<ProtectedRoute roles={['CampCoordinator']} />}><Route path="welcome" element={<WelcomePage />} /></Route>
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>
 }

@@ -12,7 +12,10 @@ export interface TokenPair { accessToken: string; accessTokenExpiresAtUtc: strin
 export interface AuthenticatedUser { id: string; email: string; role: UserRole }
 export interface PagedResult<T> { items: T[]; page: number; pageSize: number; totalCount: number; totalPages: number }
 export interface Donor { id: string; userId: string; email: string; bloodType: BloodType; dateOfBirth: string; lastDonationDate?: string; eligibilityStatus: EligibilityStatus; address: string; latitude?: number | null; longitude?: number | null; medicalFlags: string[]; isActive: boolean; updatedAtUtc: string }
-export interface BloodRequest { id: string; hospitalId: string; hospitalName: string; bloodType: BloodType; quantityUnits: number; urgency: RequestUrgency; status: BloodRequestStatus; notes?: string; requiredByUtc: string; createdAtUtc: string }
+export interface BloodRequest { id: string; hospitalId: string; hospitalName: string; bloodType: BloodType; quantityUnits: number; urgency: RequestUrgency; status: BloodRequestStatus; notes?: string; requiredByUtc: string; createdAtUtc: string; updatedAtUtc?: string }
+export interface RequestHistoryEntry { id: string; previousStatus: BloodRequestStatus; newStatus: BloodRequestStatus; changedByUserId: string; reason?: string | null; changedAtUtc: string }
+export interface HospitalRegistrationInput { name: string; registrationNumber: string; address: string; latitude: number | null; longitude: number | null; position: string }
+export interface BloodRequestInput { bloodType: BloodType; quantityUnits: number; requestedUrgency: RequestUrgency; notes: string | null; requiredByUtc: string }
 export interface Hospital { id: string; name: string; registrationNumber: string; verificationStatus: VerificationStatus; address: string; latitude?: number; longitude?: number; createdAtUtc: string }
 export interface RequestSummary { total: number; open: number; critical: number; fulfilled: number; closedUnfulfilled: number; unitsByBloodType: Record<string, number> }
 export interface Location { id: string; name: string; address: string; latitude: number; longitude: number }

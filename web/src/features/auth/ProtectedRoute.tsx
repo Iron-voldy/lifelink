@@ -3,7 +3,7 @@ import type { UserRole } from '../../api/types'
 import { useAuth } from './AuthContext'
 
 /** Where each role lands after signing in. */
-export function homeFor(role: UserRole) { return role === 'BloodBankAdmin' ? '/dashboard' : role === 'Donor' ? '/donor' : '/welcome' }
+export function homeFor(role: UserRole) { return role === 'BloodBankAdmin' ? '/dashboard' : role === 'Donor' ? '/donor' : role === 'HospitalRequester' ? '/hospital' : '/welcome' }
 
 export function ProtectedRoute({ roles }: { roles?: UserRole[] }) {
   const { user, initializing } = useAuth(); const location = useLocation()
