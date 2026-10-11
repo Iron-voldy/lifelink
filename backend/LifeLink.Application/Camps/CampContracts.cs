@@ -6,7 +6,8 @@ namespace LifeLink.Application.Camps;
 public sealed record CampInput(string Name, string Location, decimal? Latitude, decimal? Longitude, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc, int Capacity, int SlotMinutes);
 public sealed record CampView(Guid Id, Guid OrganizerUserId, string Name, string Location, decimal? Latitude, decimal? Longitude, DateTimeOffset StartsAtUtc, DateTimeOffset EndsAtUtc, int Capacity, CampStatus Status, int AvailableSlots, int BookedSlots, DateTimeOffset CreatedAtUtc);
 /// <param name="PublicOnly">Hide Draft camps, which are not announced yet, from non-administrators.</param>
-public sealed record CampQuery(string? Search, CampStatus? Status, DateTimeOffset? FromUtc, DateTimeOffset? ToUtc, int Page, int PageSize, bool PublicOnly = false);
+/// <param name="OrganizerUserId">Limit to camps organised by this user, so a coordinator sees only (and all of) their own camps.</param>
+public sealed record CampQuery(string? Search, CampStatus? Status, DateTimeOffset? FromUtc, DateTimeOffset? ToUtc, int Page, int PageSize, bool PublicOnly = false, Guid? OrganizerUserId = null);
 public sealed record CampSlotView(Guid Id, Guid CampId, Guid? DonorId, DateTimeOffset SlotTimeUtc, CampSlotStatus Status, uint Version);
 /// <summary>Admin-only view of a booked slot with enough donor detail to check the person in.</summary>
 public sealed record CampRosterEntry(Guid SlotId, DateTimeOffset SlotTimeUtc, CampSlotStatus Status, Guid DonorId, string DonorEmail, BloodType BloodType);

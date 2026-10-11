@@ -85,6 +85,18 @@ public sealed class CampAdminValidationTests
         Assert.Equal(0, report.Booked);
     }
 
+    [Fact]
+    public async Task OrganizerFilterListsOnlyThatCoordinatorsCampsIncludingDrafts()
+    {
+        var (service, db, admin, _, _) = Create();
+        var coordinator = new User("coordinator@example.com", "hash", UserRole.CampCoordinator); db.Users.Add(coordinator); db.SaveChanges();
+        await service.CreateAsync(admin.Id, new("Admin camp", "Kandy", null, null, Now.AddDays(1), Now.AddDays(1).AddHours(2), 2, 30), default);
+        var own = (await service.CreateAsync(coordinator.Id, new("Own camp", "Galle", null, null, Now.AddDays(2), Now.AddDays(2).AddHours(2), 2, 30), default)).Value!;
+        var result = await service.ListAsync(new(null, null, null, null, 1, 20, OrganizerUserId: coordinator.Id), default);
+        Assert.Equal(own.Id, Assert.Single(result.Items).Id);
+        Assert.Equal(CampStatus.Draft, result.Items[0].Status);
+    }
+
     private static (CampService Service, LifeLinkDbContext Db, User Admin, User DonorUser, MutableTimeProvider Clock) Create()
     {
         var options = new DbContextOptionsBuilder<LifeLinkDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options; var db = new LifeLinkDbContext(options);

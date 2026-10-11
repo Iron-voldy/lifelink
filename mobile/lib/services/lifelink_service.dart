@@ -79,6 +79,26 @@ class LifeLinkService {
   Future<void> cancelBooking(String campId, String slotId) =>
       api.delete('/api/camps/$campId/slots/$slotId/booking');
 
+  /// For a coordinator the API returns only the camps they organise, drafts included.
+  Future<List<Camp>> myCamps() async {
+    final j = await api.get('/api/camps?pageSize=100') as Map<String, dynamic>;
+    return (j['items'] as List).map((x) => Camp.fromJson(x)).toList();
+  }
+
+  Future<Camp> createCamp(Map<String, dynamic> input) async =>
+      Camp.fromJson(await api.post('/api/camps', input));
+  Future<Camp> transitionCamp(String id, String status) async =>
+      Camp.fromJson(await api.put('/api/camps/$id/status', {'status': status}));
+  Future<List<CampRosterEntry>> campRoster(String id) async =>
+      ((await api.get('/api/camps/$id/roster')) as List)
+          .map((x) => CampRosterEntry.fromJson(x))
+          .toList();
+  Future<AttendanceReport> campAttendance(String id) async =>
+      AttendanceReport.fromJson(
+          await api.get('/api/camps/$id/attendance-report'));
+  Future<void> checkIn(String campId, String slotId) =>
+      api.put('/api/camps/$campId/slots/$slotId/check-in', {});
+
   Future<EligibilityEvaluation> checkEligibility(String donorId) async =>
       EligibilityEvaluation.fromJson(
           await api.post('/api/donors/$donorId/check-eligibility', {}));

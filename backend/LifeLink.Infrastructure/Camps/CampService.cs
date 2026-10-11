@@ -39,6 +39,7 @@ public sealed class CampService(LifeLinkDbContext db, TimeProvider timeProvider,
         var page = Math.Max(1, input.Page); var size = Math.Clamp(input.PageSize, 1, 100); var query = db.DonationCamps.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(input.Search)) { var search = input.Search.Trim().ToLower(); query = query.Where(x => x.Name.ToLower().Contains(search) || x.Location.ToLower().Contains(search)); }
         if (input.PublicOnly) query = query.Where(x => x.Status != CampStatus.Draft);
+        if (input.OrganizerUserId is { } organizer) query = query.Where(x => x.OrganizerUserId == organizer);
         if (input.Status is not null) query = query.Where(x => x.Status == input.Status); if (input.FromUtc is { } from) { from = from.ToUniversalTime(); query = query.Where(x => x.StartsAtUtc >= from); } if (input.ToUtc is { } to) { to = to.ToUniversalTime(); query = query.Where(x => x.StartsAtUtc <= to); }
         var count = await query.CountAsync(ct); var camps = await query.OrderBy(x => x.StartsAtUtc).Skip((page - 1) * size).Take(size).ToListAsync(ct); var views = await MapMany(camps, ct); return new(views, page, size, count);
     }

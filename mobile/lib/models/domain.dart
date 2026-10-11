@@ -51,19 +51,61 @@ class Camp {
       required this.location,
       required this.startsAtUtc,
       required this.availableSlots,
+      this.endsAtUtc = '',
+      this.status = 'Scheduled',
+      this.capacity = 0,
+      this.bookedSlots = 0,
       this.latitude,
       this.longitude});
-  final String id, name, location, startsAtUtc;
-  final int availableSlots;
+  final String id, name, location, startsAtUtc, endsAtUtc, status;
+  final int availableSlots, capacity, bookedSlots;
   final double? latitude, longitude;
   factory Camp.fromJson(Map<String, dynamic> j) => Camp(
       id: j['id'],
       name: j['name'],
       location: j['location'],
       startsAtUtc: j['startsAtUtc'],
+      endsAtUtc: j['endsAtUtc'] ?? '',
+      status: j['status'] ?? 'Scheduled',
+      capacity: j['capacity'] ?? 0,
+      bookedSlots: j['bookedSlots'] ?? 0,
       availableSlots: j['availableSlots'],
       latitude: (j['latitude'] as num?)?.toDouble(),
       longitude: (j['longitude'] as num?)?.toDouble());
+}
+
+/// A booked slot with the donor's contact, shown to the camp's organiser for check-in.
+class CampRosterEntry {
+  const CampRosterEntry(
+      {required this.slotId,
+      required this.slotTimeUtc,
+      required this.status,
+      required this.donorEmail,
+      required this.bloodType});
+  final String slotId, slotTimeUtc, status, donorEmail, bloodType;
+  factory CampRosterEntry.fromJson(Map<String, dynamic> j) => CampRosterEntry(
+      slotId: j['slotId'],
+      slotTimeUtc: j['slotTimeUtc'],
+      status: j['status'],
+      donorEmail: j['donorEmail'],
+      bloodType: j['bloodType']);
+}
+
+class AttendanceReport {
+  const AttendanceReport(
+      {required this.booked,
+      required this.checkedIn,
+      required this.noShows,
+      required this.cancelled,
+      required this.attendanceRate});
+  final int booked, checkedIn, noShows, cancelled;
+  final double attendanceRate;
+  factory AttendanceReport.fromJson(Map<String, dynamic> j) => AttendanceReport(
+      booked: j['booked'],
+      checkedIn: j['checkedIn'],
+      noShows: j['noShows'],
+      cancelled: j['cancelled'],
+      attendanceRate: (j['attendanceRate'] as num).toDouble());
 }
 
 class EligibilityEvaluation {

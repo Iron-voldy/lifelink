@@ -92,6 +92,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("BloodBankAdmin"));
     options.AddPolicy("HospitalOnly", policy => policy.RequireRole("HospitalRequester"));
     options.AddPolicy("DonorOnly", policy => policy.RequireRole("Donor"));
+    options.AddPolicy("CampManager", policy => policy.RequireRole("BloodBankAdmin", "CampCoordinator"));
 });
 var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:5173"];
 builder.Services.AddCors(options => options.AddPolicy("Clients", policy => policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod()));

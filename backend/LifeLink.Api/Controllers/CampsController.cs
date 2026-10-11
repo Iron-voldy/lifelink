@@ -15,23 +15,23 @@ namespace LifeLink.Api.Controllers;
 public sealed class CampsController(ICampService camps) : ControllerBase
 {
     [HttpPost]
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "CampManager")]
     public async Task<ActionResult<CampView>> Create(CampRequest input, CancellationToken ct) { var result = await camps.CreateAsync(CurrentUserId(), input.ToContract(), ct); return result.Succeeded ? CreatedAtAction(nameof(Get), new { id = result.Value!.Id }, result.Value) : Error(result); }
     [HttpGet("{id:guid}")]
-    public async Task<ActionResult<CampView>> Get(Guid id, CancellationToken ct) { var result = await camps.GetAsync(id, ct); if (result.Succeeded && result.Value!.Status == CampStatus.Draft && !IsAdmin()) return Problem(statusCode: 404, title: "camp_not_found", detail: "Donation camp was not found."); return result.Succeeded ? Ok(result.Value) : Error(result); }
+    public async Task<ActionResult<CampView>> Get(Guid id, CancellationToken ct) { var result = await camps.GetAsync(id, ct); if (result.Succeeded && result.Value!.Status == CampStatus.Draft && !CanManage(result.Value)) return Problem(statusCode: 404, title: "camp_not_found", detail: "Donation camp was not found."); return result.Succeeded ? Ok(result.Value) : Error(result); }
     [HttpGet]
-    public async Task<ActionResult<PagedResult<CampView>>> List([FromQuery] string? search, [FromQuery] CampStatus? status, [FromQuery] DateTimeOffset? fromUtc, [FromQuery] DateTimeOffset? toUtc, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => Ok(await camps.ListAsync(new(search, status, fromUtc, toUtc, page, pageSize, PublicOnly: !IsAdmin()), ct));
+    public async Task<ActionResult<PagedResult<CampView>>> List([FromQuery] string? search, [FromQuery] CampStatus? status, [FromQuery] DateTimeOffset? fromUtc, [FromQuery] DateTimeOffset? toUtc, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => Ok(await camps.ListAsync(new(search, status, fromUtc, toUtc, page, pageSize, PublicOnly: !IsAdmin() && !IsCoordinator(), OrganizerUserId: IsCoordinator() ? CurrentUserId() : null), ct));
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult<CampView>> Update(Guid id, CampRequest input, CancellationToken ct) { var result = await camps.UpdateAsync(id, input.ToContract(), ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
+    [Authorize(Policy = "CampManager")]
+    public async Task<ActionResult<CampView>> Update(Guid id, CampRequest input, CancellationToken ct) { if (await OrganizerCheck(id, ct) is { } denied) return denied; var result = await camps.UpdateAsync(id, input.ToContract(), ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
     [HttpPut("{id:guid}/status")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult<CampView>> Transition(Guid id, CampTransitionRequest input, CancellationToken ct) { var result = await camps.TransitionAsync(id, input.Status, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
+    [Authorize(Policy = "CampManager")]
+    public async Task<ActionResult<CampView>> Transition(Guid id, CampTransitionRequest input, CancellationToken ct) { if (await OrganizerCheck(id, ct) is { } denied) return denied; var result = await camps.TransitionAsync(id, input.Status, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
     [HttpGet("{id:guid}/slots")]
     public async Task<ActionResult<IReadOnlyList<CampSlotView>>> Slots(Guid id, [FromServices] IDonorService donors, CancellationToken ct)
     {
         var result = await camps.SlotsAsync(id, ct); if (!result.Succeeded) return Error(result);
-        if (IsAdmin()) return Ok(result.Value);
+        if (IsAdmin() || (IsCoordinator() && await OrganizerCheck(id, ct) is null)) return Ok(result.Value);
         // Which donor holds which slot is personal data: non-admins only see their own booking.
         var mine = await donors.GetByUserIdAsync(CurrentUserId(), ct); var ownDonorId = mine.Succeeded ? mine.Value!.Id : (Guid?)null;
         return Ok(result.Value!.Select(x => x.DonorId is not null && x.DonorId != ownDonorId ? x with { DonorId = null } : x).ToList());
@@ -43,15 +43,24 @@ public sealed class CampsController(ICampService camps) : ControllerBase
     [Authorize(Policy = "DonorOnly")]
     public async Task<IActionResult> Cancel(Guid id, Guid slotId, CancellationToken ct) { var result = await camps.CancelBookingAsync(id, slotId, CurrentUserId(), ct); return result.Succeeded ? NoContent() : Error(result); }
     [HttpPut("{id:guid}/slots/{slotId:guid}/check-in")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult<CampSlotView>> CheckIn(Guid id, Guid slotId, CancellationToken ct) { var result = await camps.CheckInAsync(id, slotId, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
+    [Authorize(Policy = "CampManager")]
+    public async Task<ActionResult<CampSlotView>> CheckIn(Guid id, Guid slotId, CancellationToken ct) { if (await OrganizerCheck(id, ct) is { } denied) return denied; var result = await camps.CheckInAsync(id, slotId, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
     [HttpGet("{id:guid}/attendance-report")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult<AttendanceReport>> Attendance(Guid id, CancellationToken ct) { var result = await camps.AttendanceAsync(id, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
+    [Authorize(Policy = "CampManager")]
+    public async Task<ActionResult<AttendanceReport>> Attendance(Guid id, CancellationToken ct) { if (await OrganizerCheck(id, ct) is { } denied) return denied; var result = await camps.AttendanceAsync(id, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
     [HttpGet("{id:guid}/roster")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult<IReadOnlyList<CampRosterEntry>>> Roster(Guid id, CancellationToken ct) { var result = await camps.RosterAsync(id, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
+    [Authorize(Policy = "CampManager")]
+    public async Task<ActionResult<IReadOnlyList<CampRosterEntry>>> Roster(Guid id, CancellationToken ct) { if (await OrganizerCheck(id, ct) is { } denied) return denied; var result = await camps.RosterAsync(id, ct); return result.Succeeded ? Ok(result.Value) : Error(result); }
     private bool IsAdmin() => User.IsInRole(UserRole.BloodBankAdmin.ToString());
+    private bool IsCoordinator() => User.IsInRole(UserRole.CampCoordinator.ToString());
+    private bool CanManage(CampView camp) => IsAdmin() || (IsCoordinator() && camp.OrganizerUserId == CurrentUserId());
+    /// <summary>Administrators manage every camp; a coordinator only the camps they organise. Returns null when allowed.</summary>
+    private async Task<ObjectResult?> OrganizerCheck(Guid id, CancellationToken ct)
+    {
+        if (IsAdmin()) return null;
+        var camp = await camps.GetAsync(id, ct); if (!camp.Succeeded) return Error(camp);
+        return CanManage(camp.Value!) ? null : Problem(statusCode: 403, title: "not_camp_organizer", detail: "Only the camp's organiser or a blood-bank administrator can manage this camp.");
+    }
     private Guid CurrentUserId() => Guid.Parse(User.FindFirstValue(JwtRegisteredClaimNames.Sub) ?? User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     private ObjectResult Error<T>(CampResult<T> result) => result.ErrorCode switch { "camp_not_found" or "slot_not_found" => Problem(statusCode: 404, title: result.ErrorCode, detail: result.ErrorMessage), "already_booked" or "slot_unavailable" or "camp_has_bookings" or "invalid_transition" or "invalid_camp_state" or "invalid_slot_state" => Problem(statusCode: 409, title: result.ErrorCode, detail: result.ErrorMessage), "not_booking_owner" => Problem(statusCode: 403, title: result.ErrorCode, detail: result.ErrorMessage), _ => Problem(statusCode: 400, title: result.ErrorCode, detail: result.ErrorMessage) };
 }

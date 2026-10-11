@@ -7,6 +7,7 @@ import '../services/auth_controller.dart';
 import '../services/lifelink_service.dart';
 import '../services/push_notification_service.dart';
 import 'camps/camps_screen.dart';
+import 'coordinator/coordinator_camps_screen.dart';
 import 'donor/profile_screen.dart';
 import 'hospital/requests_screen.dart';
 import 'hospital/hospital_registration_screen.dart';
@@ -65,7 +66,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final session = ref.watch(authProvider).value!;
     final hospital = session.role == 'HospitalRequester';
-    final supported = hospital || session.role == 'Donor';
+    final coordinator = session.role == 'CampCoordinator';
+    final supported = hospital || coordinator || session.role == 'Donor';
     void open(Widget page) =>
         Navigator.push(context, MaterialPageRoute(builder: (_) => page));
     return LifeScaffold(
@@ -85,7 +87,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       'A connected community. A shared purpose. Your next life-changing connection starts here.',
                   photo: true),
               Text(
-                  hospital ? 'Your hospital workspace' : 'Your donor dashboard',
+                  hospital
+                      ? 'Your hospital workspace'
+                      : coordinator
+                          ? 'Your camp workspace'
+                          : 'Your donor dashboard',
                   style: Theme.of(context).textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(session.email,
@@ -97,7 +103,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         leading: Icon(Icons.desktop_windows_outlined),
                         title: Text('Use the LifeLink web workspace'),
                         subtitle: Text(
-                            'This account manages LifeLink from the admin web app. The mobile app is for donors and hospital staff.')))
+                            'This account manages LifeLink from the admin web app. The mobile app is for donors, hospital staff and camp coordinators.')))
+              else if (coordinator)
+                _Action(
+                    icon: Icons.event_note,
+                    title: 'My camps',
+                    subtitle:
+                        'Schedule camps, open bookings and check donors in',
+                    onTap: () => open(const CoordinatorCampsScreen()))
               else if (hospital) ...[
                 if (hospitalLoading)
                   const Card(
