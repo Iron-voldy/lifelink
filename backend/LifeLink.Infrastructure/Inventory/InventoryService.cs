@@ -29,12 +29,14 @@ public sealed class InventoryService(LifeLinkDbContext db, TimeProvider timeProv
     public async Task<InventoryResult<LocationView>> CreateLocationAsync(LocationInput input, CancellationToken ct)
     {
         var validation = ValidateLocation(input); if (validation is not null) return InventoryResult<LocationView>.Failure("invalid_location", validation);
+        if (await NameTakenAsync(input.Name, null, ct)) return DuplicateLocation(input.Name);
         var location = new BloodBankLocation(input.Name, input.Address, input.Latitude, input.Longitude); db.BloodBankLocations.Add(location); await db.SaveChangesAsync(ct); return InventoryResult<LocationView>.Success(Map(location));
     }
     public async Task<InventoryResult<LocationView>> UpdateLocationAsync(Guid id, LocationInput input, CancellationToken ct)
     {
         var location = await db.BloodBankLocations.SingleOrDefaultAsync(x => x.Id == id, ct); if (location is null) return InventoryResult<LocationView>.Failure("location_not_found", "Blood-bank location was not found.");
         var validation = ValidateLocation(input); if (validation is not null) return InventoryResult<LocationView>.Failure("invalid_location", validation);
+        if (await NameTakenAsync(input.Name, id, ct)) return DuplicateLocation(input.Name);
         location.Update(input.Name, input.Address, input.Latitude, input.Longitude); await db.SaveChangesAsync(ct); return InventoryResult<LocationView>.Success(Map(location));
     }
     public async Task<IReadOnlyList<LocationView>> ListLocationsAsync(CancellationToken ct) => (await db.BloodBankLocations.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct)).Select(Map).ToList();
@@ -169,6 +171,9 @@ public sealed class InventoryService(LifeLinkDbContext db, TimeProvider timeProv
     private async Task<ReservationPlan> BuildPlan(BloodRequest request, int requestedUnits, IReadOnlyList<InventoryReservation> reservations, CancellationToken ct) { var lotIds = reservations.Select(x => x.InventoryLotId).ToList(); var lots = await db.InventoryLots.Where(x => lotIds.Contains(x.Id)).Select(x => new { x.Id, x.BloodType, x.ExpiryDate }).ToDictionaryAsync(x => x.Id, ct); var views = reservations.OrderBy(x => lots[x.InventoryLotId].ExpiryDate).ThenBy(x => x.InventoryLotId).Select(x => Map(x, lots[x.InventoryLotId].BloodType)).ToList(); var total = views.Sum(x => x.Units); return new(request.Id, request.BloodType, requestedUnits, total, views, total >= requestedUnits); }
     private async Task<string> LocationName(Guid id, CancellationToken ct) => await db.BloodBankLocations.Where(x => x.Id == id).Select(x => x.Name).SingleAsync(ct);
     private async Task<Dictionary<Guid, string>> LocationNames(IEnumerable<Guid> ids, CancellationToken ct) { var list = ids.Distinct().ToList(); return await db.BloodBankLocations.Where(x => list.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Name, ct); }
+    /// <summary>Two locations with the same name are indistinguishable in stock screens, so names are unique ignoring case and surrounding spaces.</summary>
+    private Task<bool> NameTakenAsync(string name, Guid? exceptId, CancellationToken ct) { var key = name.Trim().ToLower(); return db.BloodBankLocations.AnyAsync(x => x.Name.ToLower() == key && x.Id != exceptId, ct); }
+    private static InventoryResult<LocationView> DuplicateLocation(string name) => InventoryResult<LocationView>.Failure("duplicate_location", $"A blood-bank location named '{name.Trim()}' already exists.");
     private static string? ValidateLocation(LocationInput x) => string.IsNullOrWhiteSpace(x.Name) || x.Name.Length > 250 ? "Name is required and must be at most 250 characters." : string.IsNullOrWhiteSpace(x.Address) || x.Address.Length > 500 ? "Address is required and must be at most 500 characters." : x.Latitude is < -90 or > 90 || x.Longitude is < -180 or > 180 ? "Coordinates are outside valid ranges." : null;
     private static LocationView Map(BloodBankLocation x) => new(x.Id, x.Name, x.Address, x.Latitude, x.Longitude, x.CreatedAtUtc);
     private static InventoryLotView Map(InventoryLot x, string locationName) => new(x.Id, x.LocationId, locationName, x.BloodType, x.UnitsReceived, x.UnitsAvailable, x.ExpiryDate, x.Source, x.Status, x.Version, x.UpdatedAtUtc);

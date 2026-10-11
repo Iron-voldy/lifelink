@@ -12,6 +12,18 @@ public sealed class InventoryAdminValidationTests
     private static readonly DateOnly Today = new(2026, 8, 18);
 
     [Fact]
+    public async Task LocationNamesMustBeUniqueIgnoringCaseAndSpaces()
+    {
+        var (service, db, _, centralId, _) = await CreateAsync();
+        var duplicate = await service.CreateLocationAsync(new("  central ", "Elsewhere", 7m, 80m), default);
+        Assert.Equal("duplicate_location", duplicate.ErrorCode);
+        var other = (await service.CreateLocationAsync(new("Jaffna", "Hospital Road", 9.6m, 80m), default)).Value!;
+        Assert.Equal("duplicate_location", (await service.UpdateLocationAsync(other.Id, new("CENTRAL", "Hospital Road", 9.6m, 80m), default)).ErrorCode);
+        Assert.True((await service.UpdateLocationAsync(centralId, new("Central", "New address", 6.9m, 79.8m), default)).Succeeded);
+        Assert.Equal(2, await db.BloodBankLocations.CountAsync());
+    }
+
+    [Fact]
     public async Task AdjustCannotReleaseAQuarantinedLotBackIntoStock()
     {
         var (service, db, _, locationId, _) = await CreateAsync();
