@@ -21,7 +21,7 @@ export interface RequestSummary { total: number; open: number; critical: number;
 export interface Location { id: string; name: string; address: string; latitude: number; longitude: number }
 export interface InventoryLot { id: string; locationId: string; locationName: string; bloodType: BloodType; unitsReceived: number; unitsAvailable: number; expiryDate: string; source: string; status: InventoryLotStatus; version: number; updatedAtUtc: string }
 export interface StockLevel { locationId: string; locationName: string; bloodType: BloodType; availableUnits: number; lotCount: number; expiringWithinSevenDays: number }
-export interface Camp { id: string; name: string; location: string; startsAtUtc: string; endsAtUtc: string; capacity: number; status: CampStatus; availableSlots: number; bookedSlots: number }
+export interface Camp { id: string; name: string; location: string; latitude?: number | null; longitude?: number | null; startsAtUtc: string; endsAtUtc: string; capacity: number; status: CampStatus; availableSlots: number; bookedSlots: number }
 export interface WorkflowStep { id: string; sequence: number; agentName: string; inputJson: string; outputJson?: string; toolCallsJson: string; status: string; errorCode?: string; errorMessage?: string }
 export interface Approval { id: string; version: number; approverUserId: string; decision: string; comments?: string; decidedAtUtc: string }
 export interface Workflow { id: string; bloodRequestId: string; attemptNumber: number; objective: string; planJson: string; status: WorkflowStatus; correlationId: string; startedAtUtc?: string; completedAtUtc?: string; finalOutcomeJson?: string; steps: WorkflowStep[]; approvals: Approval[] }

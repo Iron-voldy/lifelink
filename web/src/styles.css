@@ -115,3 +115,9 @@
 .history-list{list-style:none;padding:0;margin:0}.history-list li{padding:12px 0;border-bottom:1px solid var(--line)}.history-list li:last-child{border:0}.history-list strong,.history-list small{display:block;font-size:12px}.history-list small{color:var(--muted);margin-top:4px;line-height:1.5}
 @media(max-width:1150px){.stock-summary{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:760px){.portal-grid{grid-template-columns:1fr}.span-2{grid-column:auto}.portal-actions .identity,.portal-actions .theme-toggle span{display:none}.portal-bar .brand{font-size:20px}.portal-bar .brand small{display:none}.portal-main{padding:22px 16px 40px}.stock-summary{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.stock-summary>div{padding:10px 4px}.inline-form{flex-wrap:wrap}}
+
+/* Camp map (Leaflet) */
+.camp-map-card{margin-bottom:20px;padding:16px;border:1px solid var(--line);border-radius:15px;background:var(--surface);box-shadow:var(--shadow)}.camp-map-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px}.map-legend{display:flex;flex-wrap:wrap;gap:16px;margin:0;padding:0;list-style:none;font-size:11px;color:var(--muted)}.map-legend li{display:flex;align-items:center;gap:6px}.map-legend .map-pin{display:inline-block;width:12px;height:12px}
+.camp-map{height:clamp(260px,42vh,420px);border-radius:12px;overflow:hidden;border:1px solid var(--line);z-index:0}.camp-map-card .field-hint{margin:10px 0 0}
+.map-pin{border-radius:50%;border:3px solid var(--surface);box-shadow:0 1px 6px #0005}.map-pin span{display:none}.map-pin-you{background:#2f6fd6}.map-pin-camp{background:var(--green)}.map-pin-booked{background:var(--red)}.map-route{stroke:var(--red);stroke-width:2.5}
+.leaflet-container{font:inherit}.leaflet-popup-content{font-size:12px;line-height:1.6}.leaflet-popup-content strong{display:block;font-size:13px;margin-bottom:2px}

@@ -1,10 +1,13 @@
 import '../../widgets/life_scaffold.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/format.dart';
 import '../../models/domain.dart';
 import '../../services/auth_controller.dart';
 import '../../services/lifelink_service.dart';
+import '../../widgets/camp_map.dart';
 
 class CampDetailScreen extends ConsumerStatefulWidget {
   const CampDetailScreen({super.key, required this.camp, this.distanceKm});
@@ -17,8 +20,47 @@ class CampDetailScreen extends ConsumerStatefulWidget {
 class _CampDetailScreenState extends ConsumerState<CampDetailScreen> {
   List<CampSlot> slots = [];
   DonorProfile? donor;
-  String? selectedSlotId, error, notice;
-  bool loading = true, busy = false;
+  String? selectedSlotId, error, notice, locationMessage;
+  bool loading = true, busy = false, locating = false;
+
+  /// The phone's position once the donor shares it; otherwise the saved address is used.
+  LatLng? here;
+
+  LatLng? get you =>
+      here ??
+      (donor?.latitude != null && donor?.longitude != null
+          ? LatLng(donor!.latitude!, donor!.longitude!)
+          : null);
+
+  Future<void> _locate() async {
+    setState(() {
+      locating = true;
+      locationMessage = null;
+    });
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        locationMessage =
+            'Location services are off, so the map uses your saved address.';
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        locationMessage =
+            'Location permission denied, so the map uses your saved address.';
+        return;
+      }
+      final p = await Geolocator.getCurrentPosition();
+      here = LatLng(p.latitude, p.longitude);
+    } catch (_) {
+      locationMessage = 'Could not get your location right now.';
+    } finally {
+      if (mounted) setState(() => locating = false);
+    }
+  }
 
   LifeLinkService get service => LifeLinkService(ref.read(apiProvider));
 
@@ -130,6 +172,37 @@ class _CampDetailScreenState extends ConsumerState<CampDetailScreen> {
                           title: Text(widget.camp.location),
                           subtitle: Text(
                               '${formatDateTime(widget.camp.startsAtUtc)}${widget.distanceKm != null ? ' · ${widget.distanceKm!.toStringAsFixed(1)} km away' : ''}')),
+                      if (widget.camp.latitude != null &&
+                          widget.camp.longitude != null) ...[
+                        CampMap(
+                            camp: LatLng(
+                                widget.camp.latitude!, widget.camp.longitude!),
+                            campName: widget.camp.name,
+                            you: you,
+                            youLabel: here != null
+                                ? 'You are here'
+                                : 'Your saved address'),
+                        const SizedBox(height: 8),
+                        Row(children: [
+                          Expanded(
+                              child: CampMapLegend(
+                                  youLabel:
+                                      here != null ? 'You' : 'Your address')),
+                          TextButton.icon(
+                              onPressed: locating ? null : _locate,
+                              icon: const Icon(Icons.my_location, size: 18),
+                              label: Text(
+                                  locating ? 'Locating...' : 'My location'))
+                        ]),
+                        if (you != null)
+                          Text(
+                              '${distanceKm(you!, LatLng(widget.camp.latitude!, widget.camp.longitude!)).toStringAsFixed(1)} km from ${here != null ? 'you' : 'your saved address'}',
+                              style: Theme.of(context).textTheme.bodySmall),
+                        if (locationMessage != null)
+                          Text(locationMessage!,
+                              style: Theme.of(context).textTheme.bodySmall),
+                        const SizedBox(height: 12),
+                      ],
                       if (error != null)
                         Padding(
                             padding: const EdgeInsets.symmetric(vertical: 8),

@@ -27,7 +27,9 @@ const _camp = Camp(
     name: 'Colombo community donation day',
     location: 'Colombo Town Hall',
     startsAtUtc: '2026-10-04T08:00:00Z',
-    availableSlots: 24);
+    availableSlots: 24,
+    latitude: 6.9167,
+    longitude: 79.8636);
 const _request = BloodRequest(
     id: 'request-1',
     bloodType: 'OPositive',

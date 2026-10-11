@@ -27,6 +27,7 @@ public sealed class Donor : Entity
     public void ApplyEligibility(EligibilityStatus status) { EligibilityStatus = status; UpdatedAtUtc = DateTimeOffset.UtcNow; }
     public void RecordDonation(DateOnly date) { LastDonationDate = date; UpdatedAtUtc = DateTimeOffset.UtcNow; }
     public void Deactivate() { IsActive = false; UpdatedAtUtc = DateTimeOffset.UtcNow; }
+    public void Reactivate() { IsActive = true; UpdatedAtUtc = DateTimeOffset.UtcNow; }
 }
 
 public sealed class DonorEligibilityHistory : Entity

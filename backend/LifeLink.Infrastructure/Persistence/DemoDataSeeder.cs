@@ -37,12 +37,43 @@ public sealed class DemoDataSeeder(IServiceScopeFactory scopes, IOptions<DemoDat
         if (await db.Users.AnyAsync(x => x.Email.EndsWith("@" + EmailDomain), cancellationToken))
         {
             logger.LogInformation("Demo data already present; skipping seeding");
+            await ApplyDemoUpdatesAsync(db, DateTimeOffset.UtcNow, cancellationToken);
             return;
         }
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var summary = await new DemoDataBuilder(db, value.Password, DateTimeOffset.UtcNow).BuildAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         logger.LogInformation("Seeded demo data: {Summary}", summary);
+        await ApplyDemoUpdatesAsync(db, DateTimeOffset.UtcNow, cancellationToken);
+    }
+
+    /// <summary>Demo donor whose bookings are showcased in the donor portal and mobile app.</summary>
+    public const string ShowcaseDonorEmail = "donor20@" + EmailDomain;
+
+    /// <summary>
+    /// Idempotent updates for demo databases seeded by an earlier version: donor20 used to be the over-60, deactivated
+    /// donor; it is now an active, eligible donor booked into the next two upcoming camps so booking screens have data.
+    /// </summary>
+    public static async Task ApplyDemoUpdatesAsync(LifeLinkDbContext db, DateTimeOffset now, CancellationToken ct)
+    {
+        var userId = await db.Users.Where(x => x.Email == ShowcaseDonorEmail).Select(x => (Guid?)x.Id).SingleOrDefaultAsync(ct);
+        var donor = userId is null ? null : await db.Donors.SingleOrDefaultAsync(x => x.UserId == userId, ct);
+        if (donor is null) return;
+        if (!donor.IsActive || donor.EligibilityStatus != EligibilityStatus.Eligible)
+        {
+            if (DateOnly.FromDateTime(now.UtcDateTime).AddYears(-60) >= donor.DateOfBirth)
+                donor.Update(donor.BloodType, new DateOnly(1994, 3, 14), donor.Address, donor.Latitude, donor.Longitude, "[]");
+            db.DonorEligibilityHistory.Add(new DonorEligibilityHistory(donor.Id, donor.EligibilityStatus, EligibilityStatus.Eligible, "All deterministic eligibility checks passed.", null));
+            donor.Reactivate(); donor.ApplyEligibility(EligibilityStatus.Eligible);
+        }
+        var upcoming = await db.DonationCamps.Where(x => x.Status == CampStatus.Scheduled && x.StartsAtUtc > now).OrderBy(x => x.StartsAtUtc).Select(x => x.Id).Take(2).ToListAsync(ct);
+        foreach (var campId in upcoming)
+        {
+            if (await db.CampSlots.AnyAsync(x => x.CampId == campId && x.DonorId == donor.Id && x.Status != CampSlotStatus.Cancelled, ct)) continue;
+            var slot = await db.CampSlots.Where(x => x.CampId == campId && x.Status == CampSlotStatus.Available).OrderBy(x => x.SlotTimeUtc).FirstOrDefaultAsync(ct);
+            slot?.Book(donor.Id);
+        }
+        await db.SaveChangesAsync(ct);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
@@ -156,8 +187,8 @@ internal sealed class DemoDataBuilder(LifeLinkDbContext db, string password, Dat
         for (var i = 0; i < _donorUsers.Count; i++)
         {
             var place = Places[i % Places.Length];
-            // Donor 20 is over 60 (permanently ineligible); everyone else is 19-55.
-            var dob = i == 19 ? new DateOnly(1961, 3, 14) : new DateOnly(1971 + i * 17 % 36, 1 + i % 12, 1 + i * 7 % 28);
+            // Every donor is 19-55; donor 20 is the showcase donor booked into upcoming camps (see ApplyDemoUpdatesAsync).
+            var dob = i == 19 ? new DateOnly(1994, 3, 14) : new DateOnly(1971 + i * 17 % 36, 1 + i % 12, 1 + i * 7 % 28);
             string[] flags = i switch { 15 => ["Low haemoglobin at last screening"], 16 => ["Recent tattoo (under 6 months)"], _ => [] };
             var donor = Add(new Donor(_donorUsers[i].Id, types[i], dob, $"{10 + i * 3}, {place.Address}", place.Lat + i * 0.001m, place.Lon - i * 0.001m, JsonSerializer.Serialize(flags)));
             _donors.Add(donor);
@@ -176,7 +207,7 @@ internal sealed class DemoDataBuilder(LifeLinkDbContext db, string password, Dat
 
             var (status, reason) = i switch
             {
-                < 15 => (EligibilityStatus.Eligible, "All deterministic eligibility checks passed."),
+                < 15 or 19 => (EligibilityStatus.Eligible, "All deterministic eligibility checks passed."),
                 < 17 => (EligibilityStatus.TemporarilyIneligible, "Medical review required: " + flags[0]),
                 < 19 => (EligibilityStatus.PendingVerification, ""),
                 _ => (EligibilityStatus.PermanentlyIneligible, "Donor is above the maximum donation age of 60."),
@@ -187,7 +218,6 @@ internal sealed class DemoDataBuilder(LifeLinkDbContext db, string password, Dat
                 donor.ApplyEligibility(status);
             }
         }
-        _donors[19].Deactivate();
     }
 
     // ---- Blood bank locations and inventory lots ---------------------------------------------------------------------

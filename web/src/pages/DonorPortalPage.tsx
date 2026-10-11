@@ -1,8 +1,12 @@
-import { useState, type FormEvent } from 'react'
+import { lazy, Suspense, useState, type FormEvent } from 'react'
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { BloodType, Camp, CampSlot, Donor, EligibilityEvaluation } from '../api/types'
 import { PortalShell } from '../components/PortalShell'
+import type { CampPin } from '../components/CampMap'
+
+/** Leaflet is only needed by donors, so it loads on demand instead of in every portal's bundle. */
+const CampMap = lazy(() => import('../components/CampMap').then(m => ({ default: m.CampMap })))
 import { QueryState, StatusPill, formatDate } from '../components/QueryState'
 
 const bloodTypes: BloodType[] = ['APositive', 'ANegative', 'BPositive', 'BNegative', 'ABPositive', 'ABNegative', 'OPositive', 'ONegative']
@@ -83,9 +87,11 @@ function CampBookings({ donor }: { donor: Donor }) {
   const book = useMutation({ mutationFn: (camp: Camp) => api.camps.book(camp.id), onSuccess: (slot, camp) => { setNotice(`Booked ${camp.name} at ${formatDate(slot.slotTimeUtc)}.`); refresh(camp.id) } })
   const cancel = useMutation({ mutationFn: ({ camp, slot }: { camp: Camp; slot: CampSlot }) => api.camps.cancelBooking(camp.id, slot.id), onSuccess: (_, { camp }) => { setNotice(`Booking for ${camp.name} cancelled.`); refresh(camp.id) } })
   const eligible = donor.eligibilityStatus === 'Eligible'
+  const pins: CampPin[] = (camps.data?.items ?? []).filter(c => c.latitude != null && c.longitude != null).map(c => ({ id: c.id, name: c.name, location: c.location, lat: c.latitude!, lng: c.longitude!, when: formatDate(c.startsAtUtc), booked: !!mine(c) }))
   return <section className="portal-section"><div className="panel-title"><div><p className="eyebrow">Give together</p><h2>Upcoming donation camps</h2></div></div>
     {!eligible && <div className="notice-strip"><strong>Booking opens once you are eligible.</strong><span>{donor.eligibilityStatus === 'PendingVerification' ? 'Blood bank staff will verify your profile before you can book.' : 'Run the eligibility check above after updating your profile.'}</span></div>}
     {(book.error || cancel.error) && <div className="form-error" role="alert">{(book.error || cancel.error)?.message}</div>}{notice && <div className="form-notice" role="status">{notice}</div>}
+    {camps.data && <Suspense fallback={<div className="camp-map-card"><div className="camp-map" aria-busy="true" /></div>}><CampMap home={donor.latitude != null && donor.longitude != null ? { lat: donor.latitude, lng: donor.longitude } : null} camps={pins} /></Suspense>}
     <QueryState loading={camps.isLoading} error={camps.error} empty={!camps.data?.items.length} onRetry={() => camps.refetch()}><div className="camp-grid">{camps.data?.items.map(camp => { const slot = camps.data && mine(camp); return <article className="panel camp-card" key={camp.id}><div className="camp-date"><strong>{new Date(camp.startsAtUtc).getDate()}</strong><span>{new Intl.DateTimeFormat('en', { month: 'short' }).format(new Date(camp.startsAtUtc))}</span></div><div className="camp-content"><div><h2>{camp.name}</h2><p>{camp.location} · {formatDate(camp.startsAtUtc)} – {formatDate(camp.endsAtUtc)}</p></div><div className="occupancy"><span><strong>{camp.availableSlots}</strong> slots left</span></div>
       {slot ? <div className="action-row"><span className="pill pill-scheduled">Your slot {formatDate(slot.slotTimeUtc)}</span><button className="text-button danger-text" disabled={cancel.isPending} onClick={() => cancel.mutate({ camp, slot })}>Cancel booking</button></div>
         : <button className="secondary-button" disabled={!eligible || camp.availableSlots === 0 || book.isPending} onClick={() => book.mutate(camp)}>{camp.availableSlots === 0 ? 'Fully booked' : 'Book a slot'}</button>}</div></article> })}</div></QueryState></section>
