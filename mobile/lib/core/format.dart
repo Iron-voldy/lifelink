@@ -32,6 +32,21 @@ String formatDateTime(String iso) {
   return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
 }
 
+/// `13:05` -> `1:05 PM`, in the phone's local time.
+String formatTime(String iso) {
+  final d = DateTime.tryParse(iso)?.toLocal();
+  if (d == null) return iso;
+  final hour = d.hour % 12 == 0 ? 12 : d.hour % 12;
+  return '$hour:${d.minute.toString().padLeft(2, '0')} ${d.hour < 12 ? 'AM' : 'PM'}';
+}
+
+/// `2026-10-12 1:05 PM`: date plus 12-hour time, so an AM/PM slip is obvious.
+String formatDateTime12(String iso) {
+  final d = DateTime.tryParse(iso)?.toLocal();
+  if (d == null) return iso;
+  return '${formatDateTime(iso).substring(0, 10)} ${formatTime(iso)}';
+}
+
 Color urgencyColor(BuildContext context, String urgency) {
   switch (urgency) {
     case 'Critical':

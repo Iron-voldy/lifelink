@@ -27,7 +27,7 @@ public sealed class CampServiceTests
     [Fact]
     public async Task IneligibleDonorCannotBook()
     {
-        var now = DateTimeOffset.UtcNow; var (service, db, admin, donorUser) = Create(now); var donor = await db.Donors.SingleAsync(); donor.ApplyEligibility(EligibilityStatus.TemporarilyIneligible); await db.SaveChangesAsync();
+        var now = new DateTimeOffset(2026, 8, 18, 3, 30, 0, TimeSpan.Zero); var (service, db, admin, donorUser) = Create(now); var donor = await db.Donors.SingleAsync(); donor.ApplyEligibility(EligibilityStatus.TemporarilyIneligible); await db.SaveChangesAsync();
         var camp = await service.CreateAsync(admin.Id, new("Camp", "Kandy", null, null, now.AddDays(2), now.AddDays(2).AddHours(2), 2, 30), default); await service.TransitionAsync(camp.Value!.Id, CampStatus.Scheduled, default);
         var booking = await service.BookAsync(camp.Value.Id, donorUser.Id, null, default); Assert.Equal("donor_not_eligible", booking.ErrorCode);
     }

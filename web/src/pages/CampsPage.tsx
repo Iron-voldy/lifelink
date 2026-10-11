@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { Camp } from '../api/types'
 import { QueryState, StatusPill, formatDate } from '../components/QueryState'
+import { DetailList, DetailModal, LocationMapPanel, openOnRowClick } from '../components/DetailModal'
 
 const next: Record<string, string | undefined> = { Draft: 'Scheduled', Scheduled: 'InProgress', InProgress: 'Closed' }
 
@@ -17,6 +18,9 @@ export function validateCampSchedule(startsAt: string, endsAt: string, capacity:
   const latest = new Date(now); latest.setFullYear(latest.getFullYear() + 2)
   if (start > latest) return 'Start time must be within two years; check the year.'
   if (end <= start) return 'End time must be after the start time.'
+  // Same rule as the server: one Sri Lanka day (UTC+5:30, no daylight saving), 6:00 AM to 9:00 PM.
+  const lk = (d: Date) => new Date(d.getTime() + 330 * 60_000), s = lk(start), e = lk(end), minutes = (d: Date) => d.getUTCHours() * 60 + d.getUTCMinutes()
+  if (s.toISOString().slice(0, 10) !== e.toISOString().slice(0, 10) || minutes(s) < 6 * 60 || minutes(e) > 21 * 60) return 'Camps must run between 6:00 AM and 9:00 PM Sri Lanka time on one day. Check AM/PM.'
   const needed = capacity * slotMinutes
   if (needed > (end.getTime() - start.getTime()) / 60_000) return `${capacity} slots of ${slotMinutes} minutes need ${needed} minutes, which is longer than the camp. Extend the end time, or reduce capacity or slot length.`
   return null
@@ -39,7 +43,7 @@ export function CampAttendance({ camp }: { camp: Camp }) {
 }
 
 export function CampsPage() {
-  const [showCreate, setShowCreate] = useState(false); const [openCamp, setOpenCamp] = useState<string>()
+  const [showCreate, setShowCreate] = useState(false); const [openCamp, setOpenCamp] = useState<string>(); const [viewing, setViewing] = useState<string>()
   const [startsAt, setStartsAt] = useState(''); const [endsAt, setEndsAt] = useState(''); const [formError, setFormError] = useState(''); const [notice, setNotice] = useState('')
   const client = useQueryClient()
   const query = useQuery({ queryKey: ['camps'], queryFn: api.camps.list })
@@ -58,8 +62,30 @@ export function CampsPage() {
     <header className="page-header"><div><p className="eyebrow">Donation events</p><h1>Camp schedule</h1><p>Capacity, bookings and field attendance at a glance.</p></div><div className="header-actions"><span className="count-chip">{query.data?.totalCount ?? 0} camps</span><button className="primary-button" onClick={() => setShowCreate(v => !v)}>Create camp</button></div></header>
     <section className="community-banner"><p className="eyebrow">Give together. Grow together.</p><h2>Small moments. Life-changing impact.</h2><p>Bring your community together for the next donation day.</p></section>
     {(create.error || transition.error) && <div className="form-error" role="alert">{(create.error || transition.error)?.message}</div>}
-    {showCreate && <form className="panel form-panel" onSubmit={submit}><h2>Schedule a donation camp</h2><div className="form-grid"><label>Name<input name="name" required /></label><label>Location<input name="location" required /></label><label>Starts<input name="startsAtUtc" type="datetime-local" required min={minStart} value={startsAt} onChange={e => { setStartsAt(e.target.value); setFormError(''); if (endsAt && e.target.value >= endsAt) setEndsAt('') }} /></label><label>Ends<input name="endsAtUtc" type="datetime-local" required min={startsAt || minStart} disabled={!startsAt} value={endsAt} onChange={e => { setEndsAt(e.target.value); setFormError('') }} aria-describedby="camp-end-hint" /><small id="camp-end-hint" className="field-hint">{startsAt ? 'Must be after the start time.' : 'Choose the start time first.'}</small></label><label>Capacity<input name="capacity" type="number" min="1" max="1000" required /></label><label>Slot minutes<input name="slotMinutes" type="number" min="5" max="240" defaultValue="15" required /></label></div>{formError && <div className="form-error" role="alert">{formError}</div>}<button className="primary-button" disabled={create.isPending}>{create.isPending ? 'Scheduling…' : 'Schedule camp'}</button></form>}
+    {showCreate && <form className="panel form-panel" onSubmit={submit}><h2>Schedule a donation camp</h2><div className="form-grid"><label>Name<input name="name" required /></label><label>Location<input name="location" required /></label><label>Starts<input name="startsAtUtc" type="datetime-local" required min={minStart} value={startsAt} onChange={e => { setStartsAt(e.target.value); setFormError(''); if (endsAt && e.target.value >= endsAt) setEndsAt('') }} /></label><label>Ends<input name="endsAtUtc" type="datetime-local" required min={startsAt || minStart} disabled={!startsAt} value={endsAt} onChange={e => { setEndsAt(e.target.value); setFormError('') }} aria-describedby="camp-end-hint" /><small id="camp-end-hint" className="field-hint">{startsAt ? 'Same day, after the start time.' : 'Choose the start time first.'} Camps run 6:00 AM – 9:00 PM.</small></label><label>Capacity<input name="capacity" type="number" min="1" max="1000" required /></label><label>Slot minutes<input name="slotMinutes" type="number" min="5" max="240" defaultValue="15" required /></label></div>{formError && <div className="form-error" role="alert">{formError}</div>}<button className="primary-button" disabled={create.isPending}>{create.isPending ? 'Scheduling…' : 'Schedule camp'}</button></form>}
     {notice && <div className="form-notice" role="status">{notice}</div>}
-    <QueryState loading={query.isLoading} error={query.error} empty={!query.data?.items.length} onRetry={() => query.refetch()}><section className="camp-grid">{query.data?.items.map(camp => { const occupancy = camp.capacity ? Math.round(camp.bookedSlots / camp.capacity * 100) : 0; return <article className="panel camp-card" key={camp.id}><div className="camp-date"><strong>{new Date(camp.startsAtUtc).getDate()}</strong><span>{new Intl.DateTimeFormat('en', { month: 'short' }).format(new Date(camp.startsAtUtc))}</span></div><div className="camp-content"><div><StatusPill value={camp.status} /><h2>{camp.name}</h2><p>{camp.location} · {formatDate(camp.startsAtUtc)} – {new Intl.DateTimeFormat('en-LK', { timeStyle: 'short' }).format(new Date(camp.endsAtUtc))}</p></div><div className="occupancy"><span><strong>{camp.bookedSlots}</strong> / {camp.capacity} booked</span><div><i style={{ width: `${Math.min(100, occupancy)}%` }} /></div></div><div className="action-row">{next[camp.status] && <button className="secondary-button" disabled={transition.isPending} onClick={() => transition.mutate({ id: camp.id, status: next[camp.status]! })}>Move to {next[camp.status]!.replace(/([a-z])([A-Z])/g, '$1 $2')}</button>}{(camp.status === 'Draft' || camp.status === 'Scheduled') && <button className="text-button danger-text" disabled={transition.isPending} onClick={() => window.confirm(`Cancel ${camp.name}? Booked donors lose their slots.`) && transition.mutate({ id: camp.id, status: 'Cancelled' })}>Cancel camp</button>}{camp.status !== 'Draft' && <button className="text-button" aria-expanded={openCamp === camp.id} onClick={() => setOpenCamp(id => id === camp.id ? undefined : camp.id)}>{openCamp === camp.id ? 'Hide attendance' : 'Attendance'}</button>}</div>{openCamp === camp.id && <CampAttendance camp={camp} />}</div></article> })}</section></QueryState>
+    <QueryState loading={query.isLoading} error={query.error} empty={!query.data?.items.length} onRetry={() => query.refetch()}><section className="camp-grid">{query.data?.items.map(camp => { const occupancy = camp.capacity ? Math.round(camp.bookedSlots / camp.capacity * 100) : 0; return <article className="panel camp-card clickable-card" key={camp.id} onClick={openOnRowClick(() => setViewing(camp.id))}><div className="camp-date"><strong>{new Date(camp.startsAtUtc).getDate()}</strong><span>{new Intl.DateTimeFormat('en', { month: 'short' }).format(new Date(camp.startsAtUtc))}</span></div><div className="camp-content"><div><StatusPill value={camp.status} /><h2><button type="button" className="row-link" onClick={() => setViewing(camp.id)}>{camp.name}</button></h2><p>{camp.location} · {formatDate(camp.startsAtUtc)} – {new Intl.DateTimeFormat('en-LK', { timeStyle: 'short' }).format(new Date(camp.endsAtUtc))}</p></div><div className="occupancy"><span><strong>{camp.bookedSlots}</strong> / {camp.capacity} booked</span><div><i style={{ width: `${Math.min(100, occupancy)}%` }} /></div></div><div className="action-row">{next[camp.status] && <button className="secondary-button" disabled={transition.isPending} onClick={() => transition.mutate({ id: camp.id, status: next[camp.status]! })}>Move to {next[camp.status]!.replace(/([a-z])([A-Z])/g, '$1 $2')}</button>}{(camp.status === 'Draft' || camp.status === 'Scheduled') && <button className="text-button danger-text" disabled={transition.isPending} onClick={() => window.confirm(`Cancel ${camp.name}? Booked donors lose their slots.`) && transition.mutate({ id: camp.id, status: 'Cancelled' })}>Cancel camp</button>}{camp.status !== 'Draft' && <button className="text-button" aria-expanded={openCamp === camp.id} onClick={() => setOpenCamp(id => id === camp.id ? undefined : camp.id)}>{openCamp === camp.id ? 'Hide attendance' : 'Attendance'}</button>}</div>{openCamp === camp.id && <CampAttendance camp={camp} />}</div></article> })}</section></QueryState>
+    {viewing && query.data?.items.find(x => x.id === viewing) && <CampDetails camp={query.data.items.find(x => x.id === viewing)!} onClose={() => setViewing(undefined)} />}
   </>
+}
+
+const timeOf = (value: string) => new Intl.DateTimeFormat('en-LK', { timeStyle: 'short' }).format(new Date(value))
+
+/** One camp in full: schedule, capacity, every slot time with its status, location map and attendance. */
+function CampDetails({ camp, onClose }: { camp: Camp; onClose: () => void }) {
+  const slots = useQuery({ queryKey: ['camp-slots', camp.id], queryFn: () => api.camps.slots(camp.id) })
+  const words = (value: string) => value.replace(/([a-z])([A-Z])/g, '$1 $2')
+  return <DetailModal eyebrow="Donation camp" title={camp.name} onClose={onClose}>
+    <DetailList items={[
+      ['Status', <StatusPill value={camp.status} />],
+      ['Date', formatDate(camp.startsAtUtc, false)],
+      ['Hours', `${timeOf(camp.startsAtUtc)} – ${timeOf(camp.endsAtUtc)}`],
+      ['Capacity', `${camp.capacity} donors`],
+      ['Booked', `${camp.bookedSlots} of ${camp.capacity}`],
+      ['Open slots', String(camp.availableSlots)],
+    ]} />
+    <section><h3>Time slots</h3><QueryState loading={slots.isLoading} error={slots.error} empty={!slots.data?.length} onRetry={() => slots.refetch()}><ul className="slot-strip" aria-label="Camp time slots">{slots.data?.map(slot => <li key={slot.id} className={`slot-${slot.status.toLowerCase()}`} title={words(slot.status)}>{timeOf(slot.slotTimeUtc)}<span className="visually-hidden"> {words(slot.status)}</span></li>)}</ul></QueryState></section>
+    <section><h3>Location</h3><p className="muted">{camp.location}</p><LocationMapPanel pins={camp.latitude != null && camp.longitude != null ? [{ lat: camp.latitude, lng: camp.longitude, label: camp.name, kind: 'camp', lines: [camp.location] }] : []} /></section>
+    {camp.status !== 'Draft' && <section><h3>Attendance</h3><CampAttendance camp={camp} /></section>}
+  </DetailModal>
 }

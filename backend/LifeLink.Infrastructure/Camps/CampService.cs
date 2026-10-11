@@ -18,6 +18,8 @@ public sealed class CampService(LifeLinkDbContext db, TimeProvider timeProvider,
     };
     /// <summary>Coordinators may open a camp shortly before the first slot, but not days early.</summary>
     private static readonly TimeSpan EarlyStartWindow = TimeSpan.FromHours(1);
+    /// <summary>Camps are planned in Sri Lanka time (UTC+5:30 all year, no daylight saving) and must fit a practical donation day.</summary>
+    private static readonly TimeSpan SriLanka = TimeSpan.FromHours(5.5), OpensAt = TimeSpan.FromHours(6), ClosesAt = TimeSpan.FromHours(21);
 
     public async Task<CampResult<CampView>> CreateAsync(Guid organizerUserId, CampInput input, CancellationToken ct)
     {
@@ -126,6 +128,8 @@ public sealed class CampService(LifeLinkDbContext db, TimeProvider timeProvider,
         if (x.StartsAtUtc <= timeProvider.GetUtcNow()) return "Start time must be in the future.";
         if (x.StartsAtUtc > timeProvider.GetUtcNow().AddYears(2)) return "Start time must be within two years; check the year.";
         if (x.EndsAtUtc <= x.StartsAtUtc) return "End time must be after the start time.";
+        var (start, end) = (x.StartsAtUtc.ToOffset(SriLanka), x.EndsAtUtc.ToOffset(SriLanka));
+        if (start.Date != end.Date || start.TimeOfDay < OpensAt || end.TimeOfDay > ClosesAt) return $"Camps must run between 6:00 AM and 9:00 PM Sri Lanka time on one day; this one is {start:h:mm tt} – {end:h:mm tt}. Check AM/PM.";
         if (x.Capacity is < 1 or > 1000) return "Capacity must be between 1 and 1000.";
         if (x.SlotMinutes is < 5 or > 240) return "Slot minutes must be between 5 and 240.";
         if (x.StartsAtUtc.AddMinutes((long)x.Capacity * x.SlotMinutes) > x.EndsAtUtc) return $"{x.Capacity} slots of {x.SlotMinutes} minutes need {(long)x.Capacity * x.SlotMinutes} minutes, which is longer than the camp. Extend the end time, or reduce capacity or slot length.";

@@ -28,6 +28,17 @@ String? validateCampSchedule(
     return 'Start time must be within two years; check the year.';
   }
   if (!end.isAfter(start)) return 'End time must be after the start time.';
+  // Same rule as the server: one Sri Lanka day (UTC+5:30, no daylight saving), 6:00 AM to 9:00 PM.
+  final lkStart = start.toUtc().add(const Duration(hours: 5, minutes: 30)),
+      lkEnd = end.toUtc().add(const Duration(hours: 5, minutes: 30));
+  int minutes(DateTime d) => d.hour * 60 + d.minute;
+  if (lkStart.year != lkEnd.year ||
+      lkStart.month != lkEnd.month ||
+      lkStart.day != lkEnd.day ||
+      minutes(lkStart) < 6 * 60 ||
+      minutes(lkEnd) > 21 * 60) {
+    return 'Camps must run between 6:00 AM and 9:00 PM Sri Lanka time on one day. Check AM/PM.';
+  }
   if (capacity < 1 || capacity > 1000) {
     return 'Capacity must be between 1 and 1000.';
   }
@@ -192,7 +203,8 @@ class _CampCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium)),
                 Chip(label: Text(humanize(camp.status)))
               ]),
-              Text('${camp.location}\n${formatDateTime(camp.startsAtUtc)}'),
+              Text(
+                  '${camp.location}\n${formatDateTime12(camp.startsAtUtc)}${camp.endsAtUtc.isEmpty ? '' : ' – ${formatTime(camp.endsAtUtc)}'}'),
               const SizedBox(height: 8),
               Text('${camp.bookedSlots} / ${camp.capacity} booked'),
               const SizedBox(height: 4),
@@ -238,7 +250,8 @@ class _CreateCampScreenState extends ConsumerState<CreateCampScreen> {
     super.dispose();
   }
 
-  Future<DateTime?> _pick(DateTime? initial, DateTime first) async {
+  Future<DateTime?> _pick(DateTime? initial, DateTime first,
+      {TimeOfDay defaultTime = const TimeOfDay(hour: 9, minute: 0)}) async {
     final date = await showDatePicker(
         context: context,
         initialDate: initial ?? first,
@@ -247,7 +260,9 @@ class _CreateCampScreenState extends ConsumerState<CreateCampScreen> {
     if (date == null || !mounted) return null;
     final time = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.fromDateTime(initial ?? first));
+        helpText: 'Camps run between 6:00 AM and 9:00 PM',
+        initialTime:
+            initial != null ? TimeOfDay.fromDateTime(initial) : defaultTime);
     if (time == null) return null;
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
@@ -297,7 +312,7 @@ class _CreateCampScreenState extends ConsumerState<CreateCampScreen> {
               title: const Text('Starts'),
               subtitle: Text(start == null
                   ? 'Choose date and time'
-                  : formatDateTime(start!.toIso8601String())),
+                  : formatDateTime12(start!.toIso8601String())),
               onTap: () async {
                 final picked = await _pick(start, DateTime.now());
                 if (picked != null) {
@@ -316,9 +331,13 @@ class _CreateCampScreenState extends ConsumerState<CreateCampScreen> {
                   ? (start == null
                       ? 'Choose the start time first'
                       : 'Must be after the start time')
-                  : formatDateTime(end!.toIso8601String())),
+                  : formatDateTime12(end!.toIso8601String())),
               onTap: () async {
-                final picked = await _pick(end, start!);
+                final suggested = start!.add(const Duration(hours: 4));
+                final picked = await _pick(end, start!,
+                    defaultTime: suggested.day == start!.day
+                        ? TimeOfDay.fromDateTime(suggested)
+                        : const TimeOfDay(hour: 21, minute: 0));
                 if (picked != null) setState(() => end = picked);
               }),
           TextField(
@@ -429,7 +448,7 @@ class _CoordinatorCampDetailScreenState
                           child: ListTile(
                               title: Text(entry.donorEmail),
                               subtitle: Text(
-                                  '${formatDateTime(entry.slotTimeUtc)} · ${bloodLabel(entry.bloodType)} · ${humanize(entry.status)}'),
+                                  '${formatTime(entry.slotTimeUtc)} · ${bloodLabel(entry.bloodType)} · ${humanize(entry.status)}'),
                               trailing: widget.camp.status == 'InProgress' &&
                                       entry.status == 'Booked'
                                   ? TextButton(

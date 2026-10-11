@@ -24,4 +24,21 @@ void main() {
             now: now),
         'Start time must be in the future.');
   });
+  test('rejects a 12:57 AM start that should have been PM', () {
+    final day =
+        DateTime.utc(2026, 10, 11, 18, 30); // midnight 12 Oct in Sri Lanka
+    expect(
+        validateCampSchedule(day.add(const Duration(minutes: 57)),
+            day.add(const Duration(hours: 17, minutes: 57)), 15, 15,
+            now: now),
+        contains('Check AM/PM'));
+  });
+  test('accepts a 1 PM to 5 PM camp in Sri Lanka time', () {
+    final day = DateTime.utc(2026, 10, 11, 18, 30);
+    expect(
+        validateCampSchedule(day.add(const Duration(hours: 13)),
+            day.add(const Duration(hours: 17)), 16, 15,
+            now: now),
+        isNull);
+  });
 }

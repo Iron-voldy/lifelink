@@ -11,7 +11,7 @@ namespace LifeLink.Tests.Camps;
 /// <summary>Admin-side camp rules: time zones, transition timing, check-in state and attendance counts.</summary>
 public sealed class CampAdminValidationTests
 {
-    private static readonly DateTimeOffset Now = new(2026, 8, 18, 0, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset Now = new(2026, 8, 18, 3, 30, 0, TimeSpan.Zero); // 09:00 in Sri Lanka
 
     [Fact]
     public async Task CreateStoresLocalOffsetTimesAsUtc()
@@ -83,6 +83,32 @@ public sealed class CampAdminValidationTests
         var report = (await service.AttendanceAsync(camp.Id, default)).Value!;
         Assert.Equal(1, report.Cancelled);
         Assert.Equal(0, report.Booked);
+    }
+
+    [Theory]
+    [InlineData(0, 57, 17, 57)]  // 12:57 AM start: the time picker was left on AM
+    [InlineData(5, 30, 9, 0)]    // before 6:00 AM
+    [InlineData(18, 0, 22, 0)]   // past 9:00 PM
+    [InlineData(20, 0, 30, 0)]   // runs past midnight into the next day
+    public async Task CreateRejectsCampHoursOutsideTheDonationDay(int startHour, int startMinute, int endHour, int endMinute)
+    {
+        var (service, _, admin, _, _) = Create();
+        var colombo = TimeSpan.FromHours(5.5); var day = new DateTimeOffset(2026, 9, 1, 0, 0, 0, colombo);
+        var result = await service.CreateAsync(admin.Id, new("Camp", "Kandy", null, null, day.AddHours(startHour).AddMinutes(startMinute), day.AddHours(endHour).AddMinutes(endMinute), 2, 30), default);
+        Assert.Equal("invalid_camp", result.ErrorCode);
+        Assert.Contains("6:00 AM and 9:00 PM", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task CreateAcceptsAnAfternoonCampAndItsSlotsStayInsideTheHours()
+    {
+        var (service, db, admin, _, _) = Create();
+        var colombo = TimeSpan.FromHours(5.5); var start = new DateTimeOffset(2026, 9, 1, 13, 0, 0, colombo);
+        var camp = await service.CreateAsync(admin.Id, new("Afternoon camp", "Malabe", null, null, start, start.AddHours(4), 16, 15), default);
+        Assert.True(camp.Succeeded, camp.ErrorMessage);
+        var times = (await db.CampSlots.ToListAsync()).Select(x => x.SlotTimeUtc.ToOffset(colombo)).ToList();
+        Assert.Equal(new TimeSpan(13, 0, 0), times.Min().TimeOfDay);
+        Assert.True(times.Max() < start.AddHours(4));
     }
 
     [Fact]

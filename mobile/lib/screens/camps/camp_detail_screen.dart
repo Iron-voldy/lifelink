@@ -119,7 +119,7 @@ class _CampDetailScreenState extends ConsumerState<CampDetailScreen> {
         builder: (ctx) => AlertDialog(
                 title: const Text('Cancel your booking?'),
                 content: Text(
-                    'Your ${formatDateTime(slot.slotTimeUtc)} slot will be released for other donors.'),
+                    'Your ${formatDateTime12(slot.slotTimeUtc)} slot will be released for other donors.'),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
@@ -171,7 +171,7 @@ class _CampDetailScreenState extends ConsumerState<CampDetailScreen> {
                           leading: const Icon(Icons.place),
                           title: Text(widget.camp.location),
                           subtitle: Text(
-                              '${formatDateTime(widget.camp.startsAtUtc)}${widget.distanceKm != null ? ' · ${widget.distanceKm!.toStringAsFixed(1)} km away' : ''}')),
+                              '${formatDateTime12(widget.camp.startsAtUtc)}${widget.camp.endsAtUtc.isEmpty ? '' : ' – ${formatTime(widget.camp.endsAtUtc)}'}${widget.distanceKm != null ? ' · ${widget.distanceKm!.toStringAsFixed(1)} km away' : ''}')),
                       if (widget.camp.latitude != null &&
                           widget.camp.longitude != null) ...[
                         CampMap(
@@ -227,7 +227,7 @@ class _CampDetailScreenState extends ConsumerState<CampDetailScreen> {
                             child: ListTile(
                                 leading: const Icon(Icons.event_available),
                                 title: Text(
-                                    'Booked for ${formatDateTime(booking.slotTimeUtc)}'),
+                                    'Booked for ${formatDateTime12(booking.slotTimeUtc)}'),
                                 trailing: TextButton(
                                     onPressed:
                                         busy ? null : () => _cancel(booking),
@@ -255,8 +255,7 @@ class _CampDetailScreenState extends ConsumerState<CampDetailScreen> {
                               runSpacing: 8,
                               children: open
                                   .map((s) => ChoiceChip(
-                                      label: Text(formatDateTime(s.slotTimeUtc)
-                                          .substring(11)),
+                                      label: Text(formatTime(s.slotTimeUtc)),
                                       selected: selectedSlotId == s.id,
                                       onSelected: (v) => setState(() =>
                                           selectedSlotId = v ? s.id : null)))

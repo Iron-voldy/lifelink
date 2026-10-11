@@ -116,7 +116,7 @@ class _CampsScreenState extends ConsumerState<CampsScreen> {
                         onTap: () => _open(camp),
                         title: Text(camp.name),
                         subtitle: Text(
-                          '${camp.location}\n${formatDateTime(camp.startsAtUtc)}$distanceText',
+                          '${camp.location}\n${formatDateTime12(camp.startsAtUtc)}${camp.endsAtUtc.isEmpty ? '' : ' – ${formatTime(camp.endsAtUtc)}'}$distanceText',
                         ),
                         isThreeLine: true,
                         trailing: Column(

@@ -70,3 +70,21 @@ export function CampMap({ home, camps }: { home: MapPoint | null; camps: CampPin
     {nearest && you && <p className="field-hint">Nearest camp: <strong>{nearest.name}</strong>, {distanceKm(you, nearest).toFixed(1)} km away.</p>}
   </div>
 }
+
+export interface MapPin extends MapPoint { label: string; kind: 'you' | 'camp' | 'booked'; lines?: string[] }
+
+/** Compact map of one or more labelled places, framed to fit them all; used in admin detail modals. */
+export function LocationMap({ pins }: { pins: MapPin[] }) {
+  const element = useRef<HTMLDivElement>(null)
+  const key = JSON.stringify(pins) // rebuild only when the places change, not on every parent render
+  useEffect(() => {
+    const pins = JSON.parse(key) as MapPin[]
+    if (!element.current || !pins.length) return
+    const m = L.map(element.current, { scrollWheelZoom: false })
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(m)
+    for (const p of pins) L.marker([p.lat, p.lng], { icon: pin(p.kind), title: p.label }).bindPopup(popup(p.label, ...(p.lines ?? []))).addTo(m)
+    if (pins.length > 1) m.fitBounds(L.latLngBounds(pins.map(p => [p.lat, p.lng] as L.LatLngTuple)), { padding: [28, 28], maxZoom: 13 }); else m.setView([pins[0].lat, pins[0].lng], 13)
+    return () => { m.remove() }
+  }, [key])
+  return <div ref={element} className="detail-map" role="region" aria-label={`Map showing ${pins.map(p => p.label).join(', ')}`} />
+}
