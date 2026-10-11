@@ -49,7 +49,8 @@ public sealed class DemoDataSeederTests
         };
         Assert.All(counts, x => Assert.True(x.Value >= 10, $"{x.Key}: {x.Value}"));
         // Second start must not duplicate anything.
-        Assert.Equal(52, await db.Users.CountAsync());
+        // 52 core accounts + 25 districts x (8 donors + 2 hospital staff + 1 coordinator).
+        Assert.Equal(52 + 25 * 11, await db.Users.CountAsync());
     }
 
     [Fact]

@@ -37,14 +37,27 @@ public sealed class DemoDataSeeder(IServiceScopeFactory scopes, IOptions<DemoDat
         if (await db.Users.AnyAsync(x => x.Email.EndsWith("@" + EmailDomain), cancellationToken))
         {
             logger.LogInformation("Demo data already present; skipping seeding");
-            await ApplyDemoUpdatesAsync(db, DateTimeOffset.UtcNow, cancellationToken);
+            await ApplyExtrasAsync(db, value.Password, cancellationToken);
             return;
         }
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var summary = await new DemoDataBuilder(db, value.Password, DateTimeOffset.UtcNow).BuildAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         logger.LogInformation("Seeded demo data: {Summary}", summary);
-        await ApplyDemoUpdatesAsync(db, DateTimeOffset.UtcNow, cancellationToken);
+        await ApplyExtrasAsync(db, value.Password, cancellationToken);
+    }
+
+    /// <summary>Additive, idempotent demo data that also reaches databases seeded by earlier versions.</summary>
+    private async Task ApplyExtrasAsync(LifeLinkDbContext db, string password, CancellationToken ct)
+    {
+        // Demo extras must never stop the API from starting; SaveChanges is atomic, so a failure adds nothing.
+        try
+        {
+            var added = await SriLankaDemoData.ApplyAsync(db, new PasswordHasher<User>().HashPassword(null!, password), DateTimeOffset.UtcNow, ct);
+            if (added) logger.LogInformation("Added island-wide demo data for {Count} districts", SriLankaDemoData.Districts.Count);
+        }
+        catch (DbUpdateException ex) { logger.LogError(ex, "Island-wide demo data could not be added"); db.ChangeTracker.Clear(); }
+        await ApplyDemoUpdatesAsync(db, DateTimeOffset.UtcNow, ct);
     }
 
     /// <summary>Demo donor whose bookings are showcased in the donor portal and mobile app.</summary>
