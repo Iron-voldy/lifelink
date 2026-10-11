@@ -13,6 +13,12 @@ export function distanceKm(a: MapPoint, b: MapPoint) {
   return 2 * r * Math.asin(Math.sqrt(h))
 }
 
+/**
+ * OpenStreetMap tiles. The site sends no Referer at all (Referrer-Policy: no-referrer), but OSM's tile usage policy
+ * blocks browser requests that do not identify the site, so tiles alone send our origin (never the page path).
+ */
+const osmTiles = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, referrerPolicy: 'strict-origin', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' })
+
 const pin = (kind: 'you' | 'camp' | 'booked') => L.divIcon({ className: `map-pin map-pin-${kind}`, html: '<span></span>', iconSize: [22, 22], iconAnchor: [11, 11], popupAnchor: [0, -12] })
 
 /** Popup content built from DOM nodes so user-entered camp names are never parsed as HTML. */
@@ -34,7 +40,7 @@ export function CampMap({ home, camps }: { home: MapPoint | null; camps: CampPin
   useEffect(() => {
     if (!element.current || map.current) return
     map.current = L.map(element.current, { scrollWheelZoom: false }).setView([7.87, 80.77], 7) // Sri Lanka
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(map.current)
+    osmTiles().addTo(map.current)
     layer.current = L.layerGroup().addTo(map.current)
     return () => { map.current?.remove(); map.current = null }
   }, [])
@@ -81,7 +87,7 @@ export function LocationMap({ pins }: { pins: MapPin[] }) {
     const pins = JSON.parse(key) as MapPin[]
     if (!element.current || !pins.length) return
     const m = L.map(element.current, { scrollWheelZoom: false })
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(m)
+    osmTiles().addTo(m)
     for (const p of pins) L.marker([p.lat, p.lng], { icon: pin(p.kind), title: p.label }).bindPopup(popup(p.label, ...(p.lines ?? []))).addTo(m)
     if (pins.length > 1) m.fitBounds(L.latLngBounds(pins.map(p => [p.lat, p.lng] as L.LatLngTuple)), { padding: [28, 28], maxZoom: 13 }); else m.setView([pins[0].lat, pins[0].lng], 13)
     return () => { m.remove() }
